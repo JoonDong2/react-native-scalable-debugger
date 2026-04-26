@@ -1,9 +1,10 @@
 import { JS_APP_URL } from "../shared/constants";
 import type { WebSocketServer, RawData, WebSocket as WebSocketType } from "ws";
-import type { IncomingMessage } from "http";
+import type { IncomingMessage, ServerResponse } from "http";
 import type { CDPMessage } from "../types/cdp";
 import type {
   AppConnection,
+  ConnectedAppDeviceInfo,
   AppMessageListener,
   ConnectedAppTarget,
   ExposedDebugger,
@@ -31,6 +32,7 @@ const appMessageListeners = new Set<AppMessageListener>();
 
 const DEBUGGER_HEARTBEAT_INTERVAL_MS = 10000;
 const MAX_PONG_LATENCY_MS = 5000;
+const APPS_ENDPOINT = "/apps";
 
 const createAppProxyMiddleware = (): Record<string, WebSocketServer> => {
   const wss = new WS.Server({
@@ -80,16 +82,24 @@ const createAppProxyMiddleware = (): Record<string, WebSocketServer> => {
     // WHATWG URL API 사용. req.url은 상대 경로이므로 더미 origin을 붙인다.
     const searchParams = new URL(req.url || "", "http://localhost").searchParams;
     const appId = searchParams.get("id") || fallbackDeviceId;
+    const nativeAppId =
+      getSearchParam(searchParams, "nativeAppId") ||
+      getSearchParam(searchParams, "bundleId") ||
+      getSearchParam(searchParams, "applicationId");
     const deviceId = searchParams.get("deviceId") || appId;
+    const deviceInfo = readDeviceInfo(searchParams);
     const name =
       searchParams.get("name") ||
       searchParams.get("deviceName") ||
+      deviceInfo.deviceName ||
       `React Native app ${deviceId}`;
 
     idToAppConnection.set(appId, {
       appId,
+      nativeAppId,
       deviceId,
       name,
+      deviceInfo,
       connectedAt: Date.now(),
       sendMessage: (message: CDPMessage | string): void => {
         const stringifiedMessage =
@@ -149,6 +159,38 @@ const createAppProxyMiddleware = (): Record<string, WebSocketServer> => {
   };
 };
 
+const createAppsMiddleware = () => {
+  return (
+    request: IncomingMessage,
+    response: ServerResponse,
+    next: () => void
+  ): void => {
+    const requestUrl = new URL(request.url || "/", "http://localhost");
+    if (normalizePathname(requestUrl.pathname) !== APPS_ENDPOINT) {
+      next();
+      return;
+    }
+
+    if (request.method !== "GET") {
+      writeJson(response, 405, {
+        ok: false,
+        error: "method_not_allowed",
+        message: "App list only supports GET requests.",
+      });
+      return;
+    }
+
+    writeJson(
+      response,
+      200,
+      {
+        ok: true,
+        apps: listAppConnections().map(toPublicAppInfo),
+      }
+    );
+  };
+};
+
 const getAppConnection = (
   debuggerConnection: ExposedDebugger
 ): AppConnection | undefined => {
@@ -182,12 +224,71 @@ const createConnectedAppTarget = (
   connection: AppConnection
 ): ConnectedAppTarget => ({
   appId: connection.appId,
+  nativeAppId: connection.nativeAppId,
   deviceId: connection.deviceId,
   name: connection.name,
+  deviceInfo: connection.deviceInfo,
   connected: true,
   connectedAt: connection.connectedAt,
   hasDebugger: idToDebuggerConnection.has(connection.appId),
 });
+
+const toPublicAppInfo = (target: ConnectedAppTarget) => ({
+  appId: target.appId,
+  nativeAppId: target.nativeAppId,
+  name: target.name,
+  deviceInfo: target.deviceInfo,
+  connected: target.connected,
+  connectedAt: target.connectedAt,
+  hasDebugger: target.hasDebugger,
+});
+
+const readDeviceInfo = (searchParams: URLSearchParams): ConnectedAppDeviceInfo => {
+  const platform = getSearchParam(searchParams, "platform");
+  const os = getSearchParam(searchParams, "os") ?? platform;
+  const deviceInfo: ConnectedAppDeviceInfo = {
+    platform,
+    os,
+    osVersion: getSearchParam(searchParams, "osVersion"),
+    deviceName: getSearchParam(searchParams, "deviceName"),
+    model: getSearchParam(searchParams, "model"),
+    manufacturer: getSearchParam(searchParams, "manufacturer"),
+    brand: getSearchParam(searchParams, "brand"),
+    reactNativeVersion: getSearchParam(searchParams, "reactNativeVersion"),
+  };
+  const isEmulator = getSearchParam(searchParams, "isEmulator");
+  if (isEmulator != null) {
+    deviceInfo.isEmulator = isEmulator === "true" || isEmulator === "1";
+  }
+
+  return Object.fromEntries(
+    Object.entries(deviceInfo).filter(([, value]) => value !== undefined)
+  ) as ConnectedAppDeviceInfo;
+};
+
+const getSearchParam = (
+  searchParams: URLSearchParams,
+  key: string
+): string | undefined => {
+  const value = searchParams.get(key);
+  return value == null || value === "" ? undefined : value;
+};
+
+const normalizePathname = (pathname: string): string => {
+  return pathname.length > 1 && pathname.endsWith("/")
+    ? pathname.slice(0, -1)
+    : pathname;
+};
+
+const writeJson = (
+  response: ServerResponse,
+  statusCode: number,
+  body: unknown
+): void => {
+  response.statusCode = statusCode;
+  response.setHeader("Content-Type", "application/json; charset=utf-8");
+  response.end(JSON.stringify(body));
+};
 
 const addAppMessageListener = (
   listener: AppMessageListener
@@ -227,8 +328,27 @@ const addAppConnectionListener = (
 
 const setDebuggerConnection = (
   appId: string,
-  debuggerConnection: ExposedDebugger
+  debuggerConnection: ExposedDebugger,
+  metadata: {
+    deviceId?: string;
+    name?: string;
+    nativeAppId?: string;
+  } = {}
 ): void => {
+  const appConnection = idToAppConnection.get(appId);
+  if (appConnection) {
+    idToAppConnection.set(appId, {
+      ...appConnection,
+      deviceId: metadata.deviceId ?? appConnection.deviceId,
+      name: metadata.name ?? appConnection.name,
+      nativeAppId: metadata.nativeAppId ?? appConnection.nativeAppId,
+      deviceInfo: {
+        ...appConnection.deviceInfo,
+        deviceName: metadata.name ?? appConnection.deviceInfo?.deviceName,
+      },
+    });
+  }
+
   idToDebuggerConnection.set(appId, debuggerConnection);
   debuggerConnectionToId.set(debuggerConnection, appId);
 };
@@ -236,6 +356,7 @@ const setDebuggerConnection = (
 export default {
   createAppProxyMiddleware,
   createJSAppMiddleware: createAppProxyMiddleware,
+  createAppsMiddleware,
   getAppId,
   getAppConnection,
   getAppConnectionById,

@@ -78,10 +78,27 @@ export type CreateCustomMessageHandlerFn = (
  */
 export interface AppConnection {
   appId: string;
+  nativeAppId?: string;
   deviceId: string;
   name: string;
+  deviceInfo?: ConnectedAppDeviceInfo;
   connectedAt: number;
   sendMessage: (message: CDPMessage | string) => void;
+}
+
+/**
+ * Best-effort device metadata reported by the React Native app runtime
+ */
+export interface ConnectedAppDeviceInfo {
+  platform?: string;
+  os?: string;
+  osVersion?: string;
+  deviceName?: string;
+  model?: string;
+  manufacturer?: string;
+  brand?: string;
+  isEmulator?: boolean;
+  reactNativeVersion?: string;
 }
 
 /**
@@ -89,8 +106,10 @@ export interface AppConnection {
  */
 export interface ConnectedAppTarget {
   appId: string;
+  nativeAppId?: string;
   deviceId: string;
   name: string;
+  deviceInfo?: ConnectedAppDeviceInfo;
   connected: boolean;
   connectedAt: number;
   hasDebugger: boolean;

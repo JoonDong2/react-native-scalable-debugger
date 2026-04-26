@@ -313,6 +313,7 @@ async function runServer(
     plugins,
     pluginEndpointContext
   );
+  const appsMiddleware = AppProxy.createAppsMiddleware();
   const appProxyMiddlewareEndpoint = AppProxy.createAppProxyMiddleware();
 
   const serverInstance = (await Metro.runServer(metroConfig, {
@@ -320,7 +321,12 @@ async function runServer(
     secure: args.https,
     secureCert: args.cert,
     secureKey: args.key,
-    unstable_extraMiddleware: [pluginMiddleware, communityMiddleware, middleware],
+    unstable_extraMiddleware: [
+      appsMiddleware,
+      pluginMiddleware,
+      communityMiddleware,
+      middleware,
+    ],
     websocketEndpoints: {
       ...communityWebsocketEndpoints,
       ...websocketEndpoints,

@@ -17,7 +17,11 @@ class JSApp extends Domain {
     if (payload.method === 'JSApp.setAppId') {
       const params = payload.params as unknown as SetAppIdParams;
       const appId = params.id;
-      AppProxy.setDebuggerConnection(appId, connection.debugger);
+      AppProxy.setDebuggerConnection(appId, connection.debugger, {
+        deviceId: connection.device.id,
+        name: connection.device.name,
+        nativeAppId: connection.device.appId,
+      });
 
       return Domain.BLOCK;
     }

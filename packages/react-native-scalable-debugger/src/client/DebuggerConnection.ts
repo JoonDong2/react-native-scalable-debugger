@@ -2,6 +2,7 @@ import { JS_APP_URL } from '../shared/constants';
 import jsonParseSafely from '../shared/jsonParseSafely';
 import DevMiddlewareConnection from './DevMiddlewareConnection';
 import { getHost } from './utils/host';
+import { Platform } from 'react-native';
 import type { CDPMessage } from '../types/cdp';
 import type { MessageListener } from '../types/connection';
 
@@ -60,7 +61,7 @@ const connect = (): void => {
   DevMiddlewareConnection.setId(id);
 
   ws = new WebSocket(
-    `ws://${host}:${port}${JS_APP_URL}?id=${id}`
+    `ws://${host}:${port}${JS_APP_URL}?${createConnectionQuery()}`
   ) as ExtendedWebSocket;
 
   ws.onmessage = (event: MessageEvent): void => {
@@ -95,6 +96,101 @@ const connect = (): void => {
     isConnecting = false;
   };
 };
+
+function createConnectionQuery(): string {
+  return createQueryString({
+    id,
+    ...getRuntimeDeviceInfo(),
+  });
+}
+
+function getRuntimeDeviceInfo(): Record<string, string | undefined> {
+  const constants = (Platform as unknown as {
+    constants?: Record<string, unknown>;
+  }).constants;
+  const platform = Platform.OS;
+  return {
+    platform,
+    os: firstString(constants, ['systemName']) ?? platform,
+    osVersion:
+      firstString(constants, ['osVersion', 'Release']) ??
+      toStringValue(Platform.Version),
+    deviceName: firstString(constants, [
+      'deviceName',
+      'DeviceName',
+      'name',
+    ]),
+    model: firstString(constants, ['model', 'Model']),
+    manufacturer: firstString(constants, ['manufacturer', 'Manufacturer']),
+    brand: firstString(constants, ['brand', 'Brand']),
+    isEmulator: toStringValue(firstDefined(constants, ['isEmulator', 'IsEmulator'])),
+    reactNativeVersion: getReactNativeVersion(constants),
+  };
+}
+
+function createQueryString(
+  params: Record<string, string | undefined>
+): string {
+  return Object.entries(params)
+    .filter(([, value]) => value != null && value !== '')
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value!)}`
+    )
+    .join('&');
+}
+
+function firstString(
+  object: Record<string, unknown> | undefined,
+  keys: readonly string[]
+): string | undefined {
+  const value = firstDefined(object, keys);
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function firstDefined(
+  object: Record<string, unknown> | undefined,
+  keys: readonly string[]
+): unknown {
+  if (!object) {
+    return undefined;
+  }
+  for (const key of keys) {
+    const value = object[key];
+    if (value != null) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function getReactNativeVersion(
+  constants: Record<string, unknown> | undefined
+): string | undefined {
+  const version = firstDefined(constants, ['reactNativeVersion']);
+  if (!version || typeof version !== 'object') {
+    return undefined;
+  }
+
+  const record = version as Record<string, unknown>;
+  const major = toStringValue(record.major);
+  const minor = toStringValue(record.minor);
+  const patch = toStringValue(record.patch);
+  if (!major || !minor || !patch) {
+    return undefined;
+  }
+  return `${major}.${minor}.${patch}`;
+}
+
+function toStringValue(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return undefined;
+}
 
 const startReconnectProcess = (): void => {
   stopReconnectTimer();
