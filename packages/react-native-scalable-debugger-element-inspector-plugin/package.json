@@ -1,0 +1,38 @@
+{
+  "name": "react-native-scalable-debugger-element-inspector-plugin",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "default": "./dist/client/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && rollup -c",
+    "prebuild": "yarn workspace react-native-scalable-debugger build:types",
+    "pretypecheck": "yarn workspace react-native-scalable-debugger build:types",
+    "typecheck": "tsc --noEmit",
+    "test": "yarn typecheck"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "react-native": "*",
+    "react-native-scalable-debugger": "*",
+    "ws": "*"
+  },
+  "devDependencies": {
+    "react-native-scalable-debugger": "0.1.0"
+  },
+  "license": "MIT"
+}
