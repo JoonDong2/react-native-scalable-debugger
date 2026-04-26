@@ -5,7 +5,8 @@ Monorepo for a plugin-oriented React Native debugger server.
 ## Packages
 
 - `react-native-scalable-debugger`: core server, client bootstrap, and plugin API.
-- `react-native-scalable-debugger-network-plugin`: Network panel plugin split from `react-native-network-debugger`.
+- `@react-native-scalable-debugger/network-plugin`: Network panel plugin split from `react-native-network-debugger`.
+- `@react-native-scalable-debugger/element-inspector-plugin`: Element inspector plugin for app snapshots.
 
 ## Development
 

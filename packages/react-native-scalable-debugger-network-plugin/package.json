@@ -1,5 +1,5 @@
 {
-  "name": "react-native-scalable-debugger-network-plugin",
+  "name": "@react-native-scalable-debugger/network-plugin",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,6 +17,9 @@
     "dist",
     "package.json"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && rollup -c",
     "prebuild": "yarn workspace react-native-scalable-debugger build:types",

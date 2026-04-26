@@ -1,4 +1,4 @@
-# react-native-scalable-debugger-element-inspector-plugin
+# @react-native-scalable-debugger/element-inspector-plugin
 
 Element tree inspector plugin for `react-native-scalable-debugger`.
 
@@ -8,7 +8,7 @@ Element tree inspector plugin for `react-native-scalable-debugger`.
 const { startCommand } = require('react-native-scalable-debugger');
 const {
   elementInspectorPlugin,
-} = require('react-native-scalable-debugger-element-inspector-plugin');
+} = require('@react-native-scalable-debugger/element-inspector-plugin');
 
 module.exports = {
   commands: [startCommand(elementInspectorPlugin())],
