@@ -24,10 +24,18 @@ import { DEVICE_KEY } from '../shared/constants';
 import AppProxy from './AppProxy';
 import { normalizePlugins } from '../plugin';
 import { createClientBootstrap } from './createClientBootstrap';
+import { createDebuggerSocketContext } from './debuggerSocketContext';
 import type MetroModule from 'metro';
 import type { Terminal as TerminalType } from 'metro-core';
+import type { IncomingMessage, ServerResponse } from 'http';
+import type { WebSocketServer } from 'ws';
 import type { CLIConfig, ServerArgs, TerminalReporter, ResolverContext, Resolution } from '../types/metro';
-import type { ScalableDebuggerPlugin } from '../plugin';
+import type {
+  MiddlewareEndpointContribution,
+  NormalizedScalableDebuggerPlugin,
+  PluginEndpointContext,
+  ScalableDebuggerPlugin,
+} from '../plugin';
 
 // Metro, metro-core, @react-native/dev-middleware는 반드시 컨슈머(char-app)의 node_modules에서
 // 로드해야 한다. 그렇지 않으면 metro-resolver가 두 인스턴스로 로드돼 사용자 customResolver의
@@ -297,6 +305,14 @@ async function runServer(
   };
   metroConfig.reporter = reporter as MetroConfig['reporter'];
 
+  const pluginEndpointContext = {
+    socketContext: createDebuggerSocketContext(),
+  };
+  const pluginMiddleware = createPluginMiddleware(plugins, pluginEndpointContext);
+  const pluginWebsocketEndpoints = createPluginWebSocketEndpoints(
+    plugins,
+    pluginEndpointContext
+  );
   const appProxyMiddlewareEndpoint = AppProxy.createAppProxyMiddleware();
 
   const serverInstance = (await Metro.runServer(metroConfig, {
@@ -304,10 +320,11 @@ async function runServer(
     secure: args.https,
     secureCert: args.cert,
     secureKey: args.key,
-    unstable_extraMiddleware: [communityMiddleware, middleware],
+    unstable_extraMiddleware: [pluginMiddleware, communityMiddleware, middleware],
     websocketEndpoints: {
       ...communityWebsocketEndpoints,
       ...websocketEndpoints,
+      ...pluginWebsocketEndpoints,
       ...appProxyMiddlewareEndpoint,
     },
   })) as MetroServer;
@@ -433,6 +450,99 @@ function findPackageRoot(filePath: string): string | null {
     dir = path.dirname(dir);
   }
   return null;
+}
+
+type MiddlewareNext = () => void;
+type ConnectMiddleware = (
+  request: IncomingMessage,
+  response: ServerResponse,
+  next: MiddlewareNext
+) => void;
+type PluginWebSocketServerFactory = (
+  request: IncomingMessage,
+  context: PluginEndpointContext
+) => WebSocketServer | null | undefined | Promise<WebSocketServer | null | undefined>;
+
+function createPluginMiddleware(
+  plugins: readonly NormalizedScalableDebuggerPlugin[],
+  context: PluginEndpointContext
+): ConnectMiddleware {
+  const endpoints = new Map<string, MiddlewareEndpointContribution>();
+
+  for (const plugin of plugins) {
+    for (const endpoint of plugin.middlewareEndpoints ?? []) {
+      const endpointPath = normalizeEndpointPath(endpoint.path);
+      if (endpoints.has(endpointPath)) {
+        throw new Error(`Duplicate plugin middleware endpoint: ${endpointPath}`);
+      }
+      endpoints.set(endpointPath, endpoint);
+    }
+  }
+
+  return (request, response, next): void => {
+    const endpoint = endpoints.get(getRequestPathname(request));
+    if (!endpoint) {
+      next();
+      return;
+    }
+
+    Promise.resolve(endpoint.handler(request, response, context, next)).catch(
+      (error: unknown) => {
+        if (!response.headersSent) {
+          response.statusCode = 500;
+          response.setHeader('Content-Type', 'application/json; charset=utf-8');
+        }
+        response.end(
+          JSON.stringify({
+            error: 'plugin_middleware_error',
+            message: error instanceof Error ? error.message : String(error),
+          })
+        );
+      }
+    );
+  };
+}
+
+function createPluginWebSocketEndpoints(
+  plugins: readonly NormalizedScalableDebuggerPlugin[],
+  context: PluginEndpointContext
+): Record<string, WebSocketServer | ((request: IncomingMessage) => WebSocketServer | null | undefined | Promise<WebSocketServer | null | undefined>)> {
+  const endpoints: Record<string, WebSocketServer | ((request: IncomingMessage) => WebSocketServer | null | undefined | Promise<WebSocketServer | null | undefined>)> = {};
+
+  for (const plugin of plugins) {
+    for (const endpoint of plugin.websocketEndpoints ?? []) {
+      const endpointPath = normalizeEndpointPath(endpoint.path);
+      if (endpoints[endpointPath]) {
+        throw new Error(`Duplicate plugin websocket endpoint: ${endpointPath}`);
+      }
+
+      const endpointServer = endpoint.server;
+      if (typeof endpointServer === 'function') {
+        const resolveEndpoint = endpointServer as PluginWebSocketServerFactory;
+        endpoints[endpointPath] = (request: IncomingMessage) =>
+          resolveEndpoint(request, context);
+      } else {
+        endpoints[endpointPath] = endpointServer;
+      }
+    }
+  }
+
+  return endpoints;
+}
+
+function getRequestPathname(request: IncomingMessage): string {
+  return normalizeEndpointPath(
+    new URL(request.url || '/', 'http://localhost').pathname
+  );
+}
+
+function normalizeEndpointPath(endpointPath: string): string {
+  const normalized = endpointPath.startsWith('/')
+    ? endpointPath
+    : `/${endpointPath}`;
+  return normalized.length > 1 && normalized.endsWith('/')
+    ? normalized.slice(0, -1)
+    : normalized;
 }
 
 async function resolveDebuggerFrontendPath(

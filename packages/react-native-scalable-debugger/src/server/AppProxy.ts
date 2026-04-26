@@ -4,6 +4,8 @@ import type { IncomingMessage } from "http";
 import type { CDPMessage } from "../types/cdp";
 import type {
   AppConnection,
+  AppMessageListener,
+  ConnectedAppTarget,
   ExposedDebugger,
   ConnectionListener,
 } from "../types/connection";
@@ -25,6 +27,7 @@ const listenersMap = new Map<
   string | ExposedDebugger,
   Set<ConnectionListener>
 >(); // key: app id or debugger connection, value: Set<listener>
+const appMessageListeners = new Set<AppMessageListener>();
 
 const DEBUGGER_HEARTBEAT_INTERVAL_MS = 10000;
 const MAX_PONG_LATENCY_MS = 5000;
@@ -77,8 +80,17 @@ const createAppProxyMiddleware = (): Record<string, WebSocketServer> => {
     // WHATWG URL API 사용. req.url은 상대 경로이므로 더미 origin을 붙인다.
     const searchParams = new URL(req.url || "", "http://localhost").searchParams;
     const appId = searchParams.get("id") || fallbackDeviceId;
+    const deviceId = searchParams.get("deviceId") || appId;
+    const name =
+      searchParams.get("name") ||
+      searchParams.get("deviceName") ||
+      `React Native app ${deviceId}`;
 
     idToAppConnection.set(appId, {
+      appId,
+      deviceId,
+      name,
+      connectedAt: Date.now(),
       sendMessage: (message: CDPMessage | string): void => {
         const stringifiedMessage =
           typeof message === "string" ? message : JSON.stringify(message);
@@ -98,12 +110,25 @@ const createAppProxyMiddleware = (): Record<string, WebSocketServer> => {
         return;
       }
 
+      const parsedMessage = parseSocketMessage(message);
+      if (!parsedMessage) {
+        return;
+      }
+
+      const appConnection = idToAppConnection.get(appId);
+      if (appConnection) {
+        const target = createConnectedAppTarget(appConnection);
+        appMessageListeners.forEach((listener) => {
+          try {
+            listener(parsedMessage, target);
+          } catch {
+            // Keep app proxy routing alive even if an optional plugin listener fails.
+          }
+        });
+      }
+
       const debuggerConn = idToDebuggerConnection.get(appId);
-      debuggerConn?.sendMessage(
-        typeof message === "string"
-          ? JSON.parse(message)
-          : JSON.parse(message.toString())
-      );
+      debuggerConn?.sendMessage(parsedMessage);
     });
 
     _startHeartbeat(socket, DEBUGGER_HEARTBEAT_INTERVAL_MS);
@@ -132,8 +157,53 @@ const getAppConnection = (
   return idToAppConnection.get(appId);
 };
 
+const getAppConnectionById = (
+  appIdOrDeviceId: string
+): AppConnection | undefined => {
+  const connectionByAppId = idToAppConnection.get(appIdOrDeviceId);
+  if (connectionByAppId) {
+    return connectionByAppId;
+  }
+
+  return Array.from(idToAppConnection.values()).find(
+    (connection) => connection.deviceId === appIdOrDeviceId
+  );
+};
+
 const getAppId = (debuggerConnection: ExposedDebugger): string | undefined => {
   return debuggerConnectionToId.get(debuggerConnection);
+};
+
+const listAppConnections = (): ConnectedAppTarget[] => {
+  return Array.from(idToAppConnection.values()).map(createConnectedAppTarget);
+};
+
+const createConnectedAppTarget = (
+  connection: AppConnection
+): ConnectedAppTarget => ({
+  appId: connection.appId,
+  deviceId: connection.deviceId,
+  name: connection.name,
+  connected: true,
+  connectedAt: connection.connectedAt,
+  hasDebugger: idToDebuggerConnection.has(connection.appId),
+});
+
+const addAppMessageListener = (
+  listener: AppMessageListener
+): (() => void) => {
+  appMessageListeners.add(listener);
+  return () => {
+    appMessageListeners.delete(listener);
+  };
+};
+
+const parseSocketMessage = (message: RawData): CDPMessage | null => {
+  try {
+    return JSON.parse(message.toString()) as CDPMessage;
+  } catch {
+    return null;
+  }
 };
 
 const addAppConnectionListener = (
@@ -168,6 +238,9 @@ export default {
   createJSAppMiddleware: createAppProxyMiddleware,
   getAppId,
   getAppConnection,
+  getAppConnectionById,
+  listAppConnections,
+  addAppMessageListener,
   addAppConnectionListener,
   setDebuggerConnection,
 };

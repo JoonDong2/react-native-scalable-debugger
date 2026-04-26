@@ -77,7 +77,23 @@ export type CreateCustomMessageHandlerFn = (
  * App connection interface
  */
 export interface AppConnection {
+  appId: string;
+  deviceId: string;
+  name: string;
+  connectedAt: number;
   sendMessage: (message: CDPMessage | string) => void;
+}
+
+/**
+ * External target exposed to plugin HTTP/WebSocket endpoints
+ */
+export interface ConnectedAppTarget {
+  appId: string;
+  deviceId: string;
+  name: string;
+  connected: boolean;
+  connectedAt: number;
+  hasDebugger: boolean;
 }
 
 /**
@@ -89,3 +105,11 @@ export type ConnectionListener = () => void;
  * Message listener callback type
  */
 export type MessageListener = (payload: CDPMessage) => void;
+
+/**
+ * App proxy message listener callback type
+ */
+export type AppMessageListener = (
+  payload: CDPMessage,
+  target: ConnectedAppTarget
+) => void;

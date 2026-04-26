@@ -1,8 +1,10 @@
 import type { WebSocketServer } from 'ws';
-import type { IncomingMessage } from 'http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import type { CDPMessage } from '../types/cdp';
 import type {
   AppConnection,
+  AppMessageListener,
+  ConnectedAppTarget,
   ConnectionListener,
   CustomMessageHandlerConnection,
   ExposedDebugger,
@@ -16,14 +18,21 @@ export interface DebuggerSocketContext {
   getAppConnection: (
     debuggerConnection: ExposedDebugger
   ) => AppConnection | undefined;
+  getAppConnectionById: (appIdOrDeviceId: string) => AppConnection | undefined;
+  listAppConnections: () => readonly ConnectedAppTarget[];
   sendToApp: (
     debuggerConnection: ExposedDebugger,
+    payload: CDPMessage | string
+  ) => boolean;
+  sendToAppById: (
+    appIdOrDeviceId: string,
     payload: CDPMessage | string
   ) => boolean;
   onAppConnected: (
     debuggerConnection: ExposedDebugger,
     listener: ConnectionListener
   ) => () => void;
+  onAppMessage: (listener: AppMessageListener) => () => void;
 }
 
 export interface InspectorDomainContext {
@@ -56,14 +65,32 @@ export interface WebSocketEndpointContribution {
   server:
     | WebSocketServer
     | ((
-        request: IncomingMessage
+        request: IncomingMessage,
+        context: PluginEndpointContext
       ) => WebSocketServer | null | undefined | Promise<WebSocketServer | null | undefined>);
+}
+
+export type MiddlewareNext = () => void;
+
+export interface PluginEndpointContext {
+  socketContext: DebuggerSocketContext;
+}
+
+export interface MiddlewareEndpointContribution {
+  path: string;
+  handler: (
+    request: IncomingMessage,
+    response: ServerResponse,
+    context: PluginEndpointContext,
+    next: MiddlewareNext
+  ) => void | Promise<void>;
 }
 
 export interface ScalableDebuggerPlugin {
   name: string;
   domains?: readonly InspectorDomainFactory[];
   clientEntries?: readonly (string | ClientEntryContribution)[];
+  middlewareEndpoints?: readonly MiddlewareEndpointContribution[];
   websocketEndpoints?: readonly WebSocketEndpointContribution[];
   handleDeviceMessage?: (
     payload: JSONSerializable,

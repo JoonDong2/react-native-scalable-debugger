@@ -9,6 +9,9 @@ export function createDebuggerSocketContext(): DebuggerSocketContext {
       AppProxy.getAppId(debuggerConnection),
     getAppConnection: (debuggerConnection: ExposedDebugger) =>
       AppProxy.getAppConnection(debuggerConnection),
+    getAppConnectionById: (appIdOrDeviceId: string) =>
+      AppProxy.getAppConnectionById(appIdOrDeviceId),
+    listAppConnections: () => AppProxy.listAppConnections(),
     sendToApp: (
       debuggerConnection: ExposedDebugger,
       payload: CDPMessage | string
@@ -21,7 +24,20 @@ export function createDebuggerSocketContext(): DebuggerSocketContext {
       appConnection.sendMessage(payload);
       return true;
     },
+    sendToAppById: (
+      appIdOrDeviceId: string,
+      payload: CDPMessage | string
+    ): boolean => {
+      const appConnection = AppProxy.getAppConnectionById(appIdOrDeviceId);
+      if (!appConnection) {
+        return false;
+      }
+
+      appConnection.sendMessage(payload);
+      return true;
+    },
     onAppConnected: (debuggerConnection, listener) =>
       AppProxy.addAppConnectionListener(debuggerConnection, listener),
+    onAppMessage: (listener) => AppProxy.addAppMessageListener(listener),
   };
 }
