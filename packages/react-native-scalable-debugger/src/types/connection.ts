@@ -88,6 +88,7 @@ export interface AppConnection {
  * Best-effort device metadata reported by the React Native app runtime
  */
 export interface ConnectedAppDeviceInfo {
+  deviceId?: string;
   platform?: string;
   os?: string;
   osVersion?: string;

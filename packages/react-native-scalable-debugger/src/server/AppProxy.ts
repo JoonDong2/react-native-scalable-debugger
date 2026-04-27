@@ -10,6 +10,7 @@ import type {
   ExposedDebugger,
   ConnectionListener,
 } from "../types/connection";
+import { enrichAppTargetsWithDeviceInfo } from "./deviceInfoResolver";
 
 // Use require for CommonJS compatibility - named exports don't work correctly with Rollup external bundling
 const WS = require("ws") as {
@@ -173,14 +174,16 @@ const createAppsMiddleware = () => {
       return;
     }
 
-    writeJson(
-      response,
-      200,
-      {
-        ok: true,
-        apps: listAppConnections().map(toPublicAppInfo),
-      }
-    );
+    void enrichAppTargetsWithDeviceInfo(listAppConnections()).then((apps) => {
+      writeJson(
+        response,
+        200,
+        {
+          ok: true,
+          apps: apps.map(toPublicAppInfo),
+        }
+      );
+    });
   };
 };
 
@@ -230,6 +233,7 @@ const readDeviceInfo = (searchParams: URLSearchParams): ConnectedAppDeviceInfo =
   const platform = getSearchParam(searchParams, "platform");
   const os = getSearchParam(searchParams, "os") ?? platform;
   const deviceInfo: ConnectedAppDeviceInfo = {
+    deviceId: getSearchParam(searchParams, "deviceId"),
     platform,
     os,
     osVersion: getSearchParam(searchParams, "osVersion"),

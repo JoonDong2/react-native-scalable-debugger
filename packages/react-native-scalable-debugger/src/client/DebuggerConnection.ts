@@ -123,6 +123,7 @@ function getRuntimeDeviceInfo(): Record<string, string | undefined> {
     model: firstString(constants, ['model', 'Model']),
     manufacturer: firstString(constants, ['manufacturer', 'Manufacturer']),
     brand: firstString(constants, ['brand', 'Brand']),
+    deviceId: getRuntimeDeviceId(constants),
     isEmulator: toStringValue(firstDefined(constants, ['isEmulator', 'IsEmulator'])),
     reactNativeVersion: getReactNativeVersion(constants),
   };
@@ -162,6 +163,18 @@ function firstDefined(
     }
   }
   return undefined;
+}
+
+function getRuntimeDeviceId(
+  constants: Record<string, unknown> | undefined
+): string | undefined {
+  const value = firstString(constants, [
+    'deviceId',
+    'DeviceId',
+    'serial',
+    'Serial',
+  ]);
+  return value;
 }
 
 function getReactNativeVersion(
