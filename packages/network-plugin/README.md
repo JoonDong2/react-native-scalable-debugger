@@ -1,4 +1,4 @@
-# @react-native-scalable-debugger/network-plugin
+# react-native-scalable-debugger-network-plugin
 
 [한국어](README.ko.md)
 
@@ -15,7 +15,7 @@ const { startCommand } = require('react-native-scalable-debugger');
 const {
   networkPanelPlugin,
   patchDebuggerFrontend,
-} = require('@react-native-scalable-debugger/network-plugin');
+} = require('react-native-scalable-debugger-network-plugin');
 
 module.exports = {
   commands: [
@@ -60,7 +60,7 @@ curl -s "http://localhost:8081/apps"
 
 It returns connected app metadata and the public `appId` selector.
 
-`GET /element-inspector` is provided by `@react-native-scalable-debugger/element-inspector-plugin`:
+`GET /element-inspector` is provided by `react-native-scalable-debugger-element-inspector-plugin`:
 
 ```sh
 curl -s "http://localhost:8081/element-inspector?appId=<appId>"

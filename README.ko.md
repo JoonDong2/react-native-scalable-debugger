@@ -7,8 +7,8 @@
 ## 패키지
 
 - `react-native-scalable-debugger`: 코어 서버, 클라이언트 부트스트랩, 플러그인 API.
-- `@react-native-scalable-debugger/network-plugin`: HTTP와 WebSocket 트래픽을 위한 네트워크 패널 지원.
-- `@react-native-scalable-debugger/element-inspector-plugin`: 연결된 React Native 앱의 엘리먼트 트리 스냅샷을 REST/WebSocket으로 제공.
+- `react-native-scalable-debugger-network-plugin`: HTTP와 WebSocket 트래픽을 위한 네트워크 패널 지원.
+- `react-native-scalable-debugger-element-inspector-plugin`: 연결된 React Native 앱의 엘리먼트 트리 스냅샷을 REST/WebSocket으로 제공.
 
 ## 배포
 
@@ -21,10 +21,10 @@ const { startCommand } = require('react-native-scalable-debugger');
 const {
   networkPanelPlugin,
   patchDebuggerFrontend,
-} = require('@react-native-scalable-debugger/network-plugin');
+} = require('react-native-scalable-debugger-network-plugin');
 const {
   elementInspectorPlugin,
-} = require('@react-native-scalable-debugger/element-inspector-plugin');
+} = require('react-native-scalable-debugger-element-inspector-plugin');
 
 module.exports = {
   commands: [
@@ -102,7 +102,7 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>"
 
 network plugin을 만든 이유는 React Native 기본 디버거의 network panel이 이 워크플로우에 필요한 socket 가시성을 충분히 제공하지 않기 때문입니다. WebSocket 트래픽이 독립적인 스트림으로 추적되지 않고, 기본 frontend에는 socket 전용 필터가 없습니다.
 
-`@react-native-scalable-debugger/network-plugin`은 앱 측 HTTP/WebSocket instrumentation을 추가하고, 디버거가 트래픽을 확인할 수 있도록 CDP `Network` domain에 기여합니다. 또한 `patchDebuggerFrontend`를 export하며, `startCommand`와 함께 사용할 때 debugger frontend에 WebSocket category/filter를 추가합니다.
+`react-native-scalable-debugger-network-plugin`은 앱 측 HTTP/WebSocket instrumentation을 추가하고, 디버거가 트래픽을 확인할 수 있도록 CDP `Network` domain에 기여합니다. 또한 `patchDebuggerFrontend`를 export하며, `startCommand`와 함께 사용할 때 debugger frontend에 WebSocket category/filter를 추가합니다.
 
 ## Debugger Frontend 커스텀
 
@@ -113,7 +113,7 @@ const { startCommand } = require('react-native-scalable-debugger');
 const {
   networkPanelPlugin,
   patchDebuggerFrontend,
-} = require('@react-native-scalable-debugger/network-plugin');
+} = require('react-native-scalable-debugger-network-plugin');
 
 module.exports = {
   commands: [

@@ -14,7 +14,7 @@ const elementInspectorPluginDefinition: ScalableDebuggerPlugin = {
   clientEntries: [
     {
       importPath:
-        '@react-native-scalable-debugger/element-inspector-plugin/client',
+        'react-native-scalable-debugger-element-inspector-plugin/client',
     },
   ],
   middlewareEndpoints: [

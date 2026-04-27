@@ -15,7 +15,7 @@ const networkPanelPluginDefinition: ScalableDebuggerPlugin = {
   domains: [createNetworkDomain],
   clientEntries: [
     {
-      importPath: '@react-native-scalable-debugger/network-plugin/client',
+      importPath: 'react-native-scalable-debugger-network-plugin/client',
     },
   ],
 };

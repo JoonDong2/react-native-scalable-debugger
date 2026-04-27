@@ -1,4 +1,4 @@
-# @react-native-scalable-debugger/network-plugin
+# react-native-scalable-debugger-network-plugin
 
 [English](README.md)
 
@@ -15,7 +15,7 @@ const { startCommand } = require('react-native-scalable-debugger');
 const {
   networkPanelPlugin,
   patchDebuggerFrontend,
-} = require('@react-native-scalable-debugger/network-plugin');
+} = require('react-native-scalable-debugger-network-plugin');
 
 module.exports = {
   commands: [
@@ -60,7 +60,7 @@ curl -s "http://localhost:8081/apps"
 
 이 endpoint는 연결된 app metadata와 공개 selector인 `appId`를 반환합니다.
 
-`GET /element-inspector`는 `@react-native-scalable-debugger/element-inspector-plugin`이 제공합니다.
+`GET /element-inspector`는 `react-native-scalable-debugger-element-inspector-plugin`이 제공합니다.
 
 ```sh
 curl -s "http://localhost:8081/element-inspector?appId=<appId>"

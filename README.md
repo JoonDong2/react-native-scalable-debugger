@@ -7,8 +7,8 @@ Monorepo for a plugin-oriented React Native debugger server. It provides a repla
 ## Packages
 
 - `react-native-scalable-debugger`: core server, client bootstrap, and plugin API.
-- `@react-native-scalable-debugger/network-plugin`: Network panel support for HTTP and WebSocket traffic.
-- `@react-native-scalable-debugger/element-inspector-plugin`: REST/WebSocket element tree snapshots for connected React Native apps.
+- `react-native-scalable-debugger-network-plugin`: Network panel support for HTTP and WebSocket traffic.
+- `react-native-scalable-debugger-element-inspector-plugin`: REST/WebSocket element tree snapshots for connected React Native apps.
 
 ## Publishing
 
@@ -21,10 +21,10 @@ const { startCommand } = require('react-native-scalable-debugger');
 const {
   networkPanelPlugin,
   patchDebuggerFrontend,
-} = require('@react-native-scalable-debugger/network-plugin');
+} = require('react-native-scalable-debugger-network-plugin');
 const {
   elementInspectorPlugin,
-} = require('@react-native-scalable-debugger/element-inspector-plugin');
+} = require('react-native-scalable-debugger-element-inspector-plugin');
 
 module.exports = {
   commands: [
@@ -110,7 +110,7 @@ Unsupported query parameters are rejected. `listDevices=1` is not supported; use
 
 The network plugin exists because the built-in React Native debugger network panel does not provide enough socket visibility for this workflow: WebSocket traffic is not tracked as a first-class stream and there is no socket-specific filter in the stock frontend.
 
-`@react-native-scalable-debugger/network-plugin` adds app-side HTTP and WebSocket instrumentation and contributes to the CDP `Network` domain so the debugger can inspect the traffic. It also exports `patchDebuggerFrontend`, which adds a WebSocket category/filter to the debugger frontend when used with `startCommand`.
+`react-native-scalable-debugger-network-plugin` adds app-side HTTP and WebSocket instrumentation and contributes to the CDP `Network` domain so the debugger can inspect the traffic. It also exports `patchDebuggerFrontend`, which adds a WebSocket category/filter to the debugger frontend when used with `startCommand`.
 
 ## Debugger Frontend Customization
 
@@ -121,7 +121,7 @@ const { startCommand } = require('react-native-scalable-debugger');
 const {
   networkPanelPlugin,
   patchDebuggerFrontend,
-} = require('@react-native-scalable-debugger/network-plugin');
+} = require('react-native-scalable-debugger-network-plugin');
 
 module.exports = {
   commands: [

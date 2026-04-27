@@ -1,4 +1,4 @@
-# @react-native-scalable-debugger/element-inspector-plugin
+# react-native-scalable-debugger-element-inspector-plugin
 
 [English](README.md)
 
@@ -12,7 +12,7 @@
 const { startCommand } = require('react-native-scalable-debugger');
 const {
   elementInspectorPlugin,
-} = require('@react-native-scalable-debugger/element-inspector-plugin');
+} = require('react-native-scalable-debugger-element-inspector-plugin');
 
 module.exports = {
   commands: [startCommand(elementInspectorPlugin())],
@@ -56,8 +56,8 @@ curl -s "http://localhost:8081/element-inspector?appId=<id>"
 
 ## Debugger Frontend 커스텀
 
-이 plugin은 debugger frontend를 patch할 필요가 없습니다. 기준 debugger frontend는 `react-native-scalable-debugger`의 `startCommand`에서 설정합니다. `@react-native-scalable-debugger/network-plugin` 같은 다른 plugin은 `startCommand`가 활성 frontend에 병합할 patch 함수를 노출할 수 있습니다.
+이 plugin은 debugger frontend를 patch할 필요가 없습니다. 기준 debugger frontend는 `react-native-scalable-debugger`의 `startCommand`에서 설정합니다. `react-native-scalable-debugger-network-plugin` 같은 다른 plugin은 `startCommand`가 활성 frontend에 병합할 patch 함수를 노출할 수 있습니다.
 
 ## 관련 Network Plugin
 
-`@react-native-scalable-debugger/network-plugin`을 만든 이유는 React Native 기본 디버거의 network panel이 WebSocket traffic을 독립적인 스트림으로 추적하지 않고, socket 전용 필터도 제공하지 않기 때문입니다. 같은 개발 세션에서 element snapshot과 HTTP/WebSocket inspection이 함께 필요할 때 사용하세요.
+`react-native-scalable-debugger-network-plugin`을 만든 이유는 React Native 기본 디버거의 network panel이 WebSocket traffic을 독립적인 스트림으로 추적하지 않고, socket 전용 필터도 제공하지 않기 때문입니다. 같은 개발 세션에서 element snapshot과 HTTP/WebSocket inspection이 함께 필요할 때 사용하세요.

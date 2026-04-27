@@ -19,11 +19,11 @@ const PACKAGES = [
     directory: 'packages/react-native-scalable-debugger',
   },
   {
-    name: '@react-native-scalable-debugger/network-plugin',
+    name: 'react-native-scalable-debugger-network-plugin',
     directory: 'packages/network-plugin',
   },
   {
-    name: '@react-native-scalable-debugger/element-inspector-plugin',
+    name: 'react-native-scalable-debugger-element-inspector-plugin',
     directory: 'packages/element-inspector-plugin',
   },
 ];

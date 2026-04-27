@@ -1,5 +1,5 @@
 {
-  "name": "@react-native-scalable-debugger/network-plugin",
+  "name": "react-native-scalable-debugger-network-plugin",
   "version": "0.0.1",
   "repository": {
     "type": "git",

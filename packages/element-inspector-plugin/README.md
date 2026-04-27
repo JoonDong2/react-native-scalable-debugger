@@ -1,4 +1,4 @@
-# @react-native-scalable-debugger/element-inspector-plugin
+# react-native-scalable-debugger-element-inspector-plugin
 
 [한국어](README.ko.md)
 
@@ -12,7 +12,7 @@ The plugin exposes the current React Native element tree through the development
 const { startCommand } = require('react-native-scalable-debugger');
 const {
   elementInspectorPlugin,
-} = require('@react-native-scalable-debugger/element-inspector-plugin');
+} = require('react-native-scalable-debugger-element-inspector-plugin');
 
 module.exports = {
   commands: [startCommand(elementInspectorPlugin())],
@@ -56,8 +56,8 @@ Unsupported query parameters are rejected. `listDevices=1` is not supported; use
 
 ## Debugger Frontend Customization
 
-This plugin does not need to patch the debugger frontend. The base debugger frontend is configured by `startCommand` in `react-native-scalable-debugger`. Other plugins, such as `@react-native-scalable-debugger/network-plugin`, can expose patch functions that `startCommand` merges into the active frontend.
+This plugin does not need to patch the debugger frontend. The base debugger frontend is configured by `startCommand` in `react-native-scalable-debugger`. Other plugins, such as `react-native-scalable-debugger-network-plugin`, can expose patch functions that `startCommand` merges into the active frontend.
 
 ## Related Network Plugin
 
-`@react-native-scalable-debugger/network-plugin` exists because the built-in React Native debugger network panel does not track WebSocket traffic as a first-class stream and does not include a socket-specific filter. Use it when the same development session needs HTTP/WebSocket inspection alongside element snapshots.
+`react-native-scalable-debugger-network-plugin` exists because the built-in React Native debugger network panel does not track WebSocket traffic as a first-class stream and does not include a socket-specific filter. Use it when the same development session needs HTTP/WebSocket inspection alongside element snapshots.
