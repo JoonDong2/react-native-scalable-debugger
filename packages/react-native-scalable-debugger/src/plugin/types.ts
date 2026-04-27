@@ -18,14 +18,14 @@ export interface DebuggerSocketContext {
   getAppConnection: (
     debuggerConnection: ExposedDebugger
   ) => AppConnection | undefined;
-  getAppConnectionById: (appIdOrDeviceId: string) => AppConnection | undefined;
+  getAppConnectionById: (appId: string) => AppConnection | undefined;
   listAppConnections: () => readonly ConnectedAppTarget[];
   sendToApp: (
     debuggerConnection: ExposedDebugger,
     payload: CDPMessage | string
   ) => boolean;
   sendToAppById: (
-    appIdOrDeviceId: string,
+    appId: string,
     payload: CDPMessage | string
   ) => boolean;
   onAppConnected: (

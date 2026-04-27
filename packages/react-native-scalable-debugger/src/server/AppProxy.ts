@@ -82,17 +82,15 @@ const createAppProxyMiddleware = (): Record<string, WebSocketServer> => {
     // WHATWG URL API 사용. req.url은 상대 경로이므로 더미 origin을 붙인다.
     const searchParams = new URL(req.url || "", "http://localhost").searchParams;
     const appId = searchParams.get("id") || fallbackDeviceId;
-    const deviceId = searchParams.get("deviceId") || appId;
     const deviceInfo = readDeviceInfo(searchParams);
     const name =
       searchParams.get("name") ||
       searchParams.get("deviceName") ||
       deviceInfo.deviceName ||
-      `React Native app ${deviceId}`;
+      `React Native app ${appId}`;
 
     idToAppConnection.set(appId, {
       appId,
-      deviceId,
       name,
       deviceInfo,
       connectedAt: Date.now(),
@@ -195,16 +193,9 @@ const getAppConnection = (
 };
 
 const getAppConnectionById = (
-  appIdOrDeviceId: string
+  appId: string
 ): AppConnection | undefined => {
-  const connectionByAppId = idToAppConnection.get(appIdOrDeviceId);
-  if (connectionByAppId) {
-    return connectionByAppId;
-  }
-
-  return Array.from(idToAppConnection.values()).find(
-    (connection) => connection.deviceId === appIdOrDeviceId
-  );
+  return idToAppConnection.get(appId);
 };
 
 const getAppId = (debuggerConnection: ExposedDebugger): string | undefined => {
@@ -219,7 +210,6 @@ const createConnectedAppTarget = (
   connection: AppConnection
 ): ConnectedAppTarget => ({
   appId: connection.appId,
-  deviceId: connection.deviceId,
   name: connection.name,
   deviceInfo: connection.deviceInfo,
   connected: true,
@@ -323,7 +313,6 @@ const setDebuggerConnection = (
   appId: string,
   debuggerConnection: ExposedDebugger,
   metadata: {
-    deviceId?: string;
     name?: string;
   } = {}
 ): void => {
@@ -331,7 +320,6 @@ const setDebuggerConnection = (
   if (appConnection) {
     idToAppConnection.set(appId, {
       ...appConnection,
-      deviceId: metadata.deviceId ?? appConnection.deviceId,
       name: metadata.name ?? appConnection.name,
       deviceInfo: {
         ...appConnection.deviceInfo,
