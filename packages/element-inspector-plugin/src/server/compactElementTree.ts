@@ -102,11 +102,7 @@ function canBypassWrapper(
   parent: CompactElementInspectorNode,
   child: CompactElementInspectorNode
 ): boolean {
-  if (
-    parent.type === 'View' &&
-    child.type === 'RCTView' &&
-    hasSameLayout(parent.layout, child.layout)
-  ) {
+  if (hasSameLayout(parent.layout, child.layout)) {
     return true;
   }
 
