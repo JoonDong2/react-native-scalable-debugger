@@ -5,6 +5,7 @@ import {
   type ElementInspectorGetTreeParams,
   type ElementInspectorSnapshot,
 } from '../shared/protocol';
+import { stringifyJson } from '../shared/stringifyJson';
 import { collectElementTree } from './collectElementTree';
 
 interface AppProxyMessage {
@@ -36,17 +37,14 @@ async function handleGetTreeRequest(params: unknown): Promise<void> {
   }
 
   const snapshot = await safeCollectElementTree(request);
-  DebuggerConnection.send({
-    method: ELEMENT_INSPECTOR_SNAPSHOT_METHOD,
-    params: snapshot,
-  });
+  safeSendSnapshot(snapshot, request);
 }
 
 async function safeCollectElementTree(
   request: ElementInspectorGetTreeParams
 ): Promise<ElementInspectorSnapshot> {
   try {
-    return collectElementTree(request);
+    return await collectElementTree(request);
   } catch (error) {
     return {
       requestId: request.requestId,
@@ -56,6 +54,44 @@ async function safeCollectElementTree(
       reason: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function safeSendSnapshot(
+  snapshot: ElementInspectorSnapshot,
+  request: ElementInspectorGetTreeParams
+): void {
+  try {
+    DebuggerConnection.send(
+      stringifyJson({
+        method: ELEMENT_INSPECTOR_SNAPSHOT_METHOD,
+        params: stringifyJson(snapshot),
+      })
+    );
+  } catch (error) {
+    try {
+      DebuggerConnection.send(
+        stringifyJson({
+          method: ELEMENT_INSPECTOR_SNAPSHOT_METHOD,
+          params: stringifyJson(createErrorSnapshot(request, error)),
+        })
+      );
+    } catch {
+      // Avoid surfacing an unhandled promise rejection from the inspector path.
+    }
+  }
+}
+
+function createErrorSnapshot(
+  request: ElementInspectorGetTreeParams,
+  error: unknown
+): ElementInspectorSnapshot {
+  return {
+    requestId: request.requestId,
+    requestedAt: request.requestedAt,
+    capturedAt: Date.now(),
+    status: 'error',
+    reason: error instanceof Error ? error.message : String(error),
+  };
 }
 
 function parseGetTreeParams(

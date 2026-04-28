@@ -6,14 +6,14 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import type { ElementInspectorController } from './ElementInspectorController';
 import { compactElementTree } from './compactElementTree';
 import { renderElementTreeText } from './renderElementTreeText';
+import { stringifyJson } from '../shared/stringifyJson';
 
 const SUPPORTED_QUERY_PARAMS = new Set([
   'appId',
-  'timeoutMs',
   'compact',
   'plain',
 ]);
-const SUPPORTED_QUERY_PARAMS_MESSAGE = 'appId, timeoutMs, compact, and plain';
+const SUPPORTED_QUERY_PARAMS_MESSAGE = 'appId, compact, and plain';
 
 export function createElementInspectorMiddleware(
   controller: ElementInspectorController
@@ -54,7 +54,6 @@ export function createElementInspectorMiddleware(
     const plain = parseModeFlag(requestUrl.searchParams.get('plain'));
     const result = await controller.requestSnapshot(context, {
       appId: requestUrl.searchParams.get('appId') ?? undefined,
-      timeoutMs: parseTimeoutMs(requestUrl.searchParams.get('timeoutMs')),
     });
 
     if (result.ok) {
@@ -93,14 +92,6 @@ function getUnsupportedQueryParams(searchParams: URLSearchParams): string[] {
   );
 }
 
-function parseTimeoutMs(value: string | null): number | undefined {
-  if (value == null || value.trim() === '') {
-    return undefined;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
 function parseModeFlag(value: string | null): boolean {
   return value === '1';
 }
@@ -119,7 +110,7 @@ function writeJson(
 ): void {
   response.statusCode = statusCode;
   response.setHeader('Content-Type', 'application/json; charset=utf-8');
-  response.end(JSON.stringify(body));
+  response.end(stringifyJson(body));
 }
 
 function writeText(

@@ -4,6 +4,7 @@ import type {
 } from 'react-native-scalable-debugger/plugin';
 import type { RawData, WebSocket, WebSocketServer } from 'ws';
 import type { ElementInspectorController } from './ElementInspectorController';
+import { stringifyJson } from '../shared/stringifyJson';
 
 const WS = require('ws') as {
   Server: typeof WebSocketServer;
@@ -14,7 +15,6 @@ interface WebSocketRequest {
   id?: string | number;
   type?: string;
   appId?: string;
-  timeoutMs?: number;
 }
 
 interface WebSocketSubscription {
@@ -132,7 +132,6 @@ async function handleSocketMessage(
   if (request.type === 'getTree') {
     const result = await controller.requestSnapshot(context, {
       appId: request.appId,
-      timeoutMs: request.timeoutMs,
     });
 
     if (result.ok) {
@@ -182,5 +181,5 @@ function sendJson(socket: WebSocket, message: unknown): void {
   if (socket.readyState !== WS.OPEN) {
     return;
   }
-  socket.send(JSON.stringify(message));
+  socket.send(stringifyJson(message));
 }

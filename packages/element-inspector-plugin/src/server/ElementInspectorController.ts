@@ -17,7 +17,6 @@ interface AppProxyMessage {
 
 export interface SnapshotRequestOptions {
   appId?: string;
-  timeoutMs?: number;
 }
 
 export interface ControllerSuccessResult extends ElementInspectorSuccessResponse {
@@ -39,12 +38,7 @@ export type SnapshotListener = (
 interface PendingSnapshotRequest {
   device: ElementInspectorDevice;
   resolve: (result: ControllerSnapshotResult) => void;
-  timeout: ReturnType<typeof setTimeout>;
 }
-
-const DEFAULT_TIMEOUT_MS = 10000;
-const MIN_TIMEOUT_MS = 100;
-const MAX_TIMEOUT_MS = 30000;
 
 export class ElementInspectorController {
   #context: PluginEndpointContext | null = null;
@@ -96,21 +90,9 @@ export class ElementInspectorController {
     };
 
     return new Promise<ControllerSnapshotResult>((resolve) => {
-      const timeout = setTimeout(() => {
-        this.#pendingRequests.delete(requestId);
-        resolve({
-          ok: false,
-          statusCode: 504,
-          error: 'snapshot_timeout',
-          message: `Timed out waiting for element snapshot from appId "${selection.device.appId}".`,
-          devices: this.listDevices(context),
-        });
-      }, clampTimeoutMs(options.timeoutMs));
-
       this.#pendingRequests.set(requestId, {
         device: selection.device,
         resolve,
-        timeout,
       });
 
       const sent = context.socketContext.sendToAppById(selection.device.appId, {
@@ -119,7 +101,6 @@ export class ElementInspectorController {
       });
 
       if (!sent) {
-        clearTimeout(timeout);
         this.#pendingRequests.delete(requestId);
         resolve({
           ok: false,
@@ -157,7 +138,6 @@ export class ElementInspectorController {
       return;
     }
 
-    clearTimeout(pending.timeout);
     this.#pendingRequests.delete(snapshot.requestId);
 
     const result: ControllerSuccessResult = {
@@ -249,11 +229,12 @@ function toElementInspectorDevice(target: {
 }
 
 function parseSnapshot(value: unknown): ElementInspectorSnapshot | null {
-  if (!value || typeof value !== 'object') {
+  const snapshotValue = typeof value === 'string' ? parseJson(value) : value;
+  if (!snapshotValue || typeof snapshotValue !== 'object') {
     return null;
   }
 
-  const snapshot = value as Partial<ElementInspectorSnapshot>;
+  const snapshot = snapshotValue as Partial<ElementInspectorSnapshot>;
   if (
     typeof snapshot.requestId !== 'string' ||
     typeof snapshot.requestedAt !== 'number' ||
@@ -266,6 +247,14 @@ function parseSnapshot(value: unknown): ElementInspectorSnapshot | null {
   return snapshot as ElementInspectorSnapshot;
 }
 
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
 function isSnapshotStatus(value: unknown): boolean {
   return value === 'ok' || value === 'unsupported' || value === 'error';
 }
@@ -275,11 +264,4 @@ function isSameDevice(
   actual: ElementInspectorDevice
 ): boolean {
   return expected.appId === actual.appId;
-}
-
-function clampTimeoutMs(value: number | undefined): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return DEFAULT_TIMEOUT_MS;
-  }
-  return Math.max(MIN_TIMEOUT_MS, Math.min(MAX_TIMEOUT_MS, value));
 }
