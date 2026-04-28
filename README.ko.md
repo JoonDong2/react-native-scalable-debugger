@@ -92,7 +92,6 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>"
 지원하는 query parameter:
 
 - `appId`: `GET /apps`에서 얻은 연결된 앱 ID.
-- `timeoutMs`: 선택적 snapshot timeout.
 - `compact`: `1`을 전달하면 width 또는 height가 0인 node와 `DebuggingOverlay`를 제거하고, 단순 React Native wrapper pair를 flatten하며, tree node에 `type`, `layout`, `text`, `props.style`, `source`, 비어 있지 않은 `children`만 남깁니다.
 - `plain`: `1`을 전달하면 JSON 대신 들여쓰기 기반 `text/plain` tree를 반환합니다.
 
@@ -106,7 +105,7 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1&plain=1"
 ```
 
-Plain output은 한 줄에 node 하나를 렌더링하고, depth마다 두 칸을 들여쓰며, layout은 `[x,y,width,height]` 형식으로 표시합니다.
+Plain output은 한 줄에 node 하나를 렌더링하고, depth마다 두 칸을 들여쓰며, layout은 `[x,y,width,height]` 형식으로 표시하고, style prop은 `style={fontSize:18}` 같은 compact `style={...}` 값으로 표시합니다.
 
 `GET /element-inspector`는 요청 시점에 앱 런타임에 새 스냅샷을 요청합니다. 캐시된 엘리먼트 트리를 반환하지 않습니다. 이 플러그인은 MCP 서버나 LLM agent가 개발 호스트에서 현재 React Native 결과물을 확인하기 위한 용도입니다.
 

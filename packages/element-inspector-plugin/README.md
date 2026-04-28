@@ -61,11 +61,11 @@ curl -s "http://localhost:8081/element-inspector?appId=<id>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&compact=1&plain=1"
 ```
 
-Plain output uses two spaces per depth and renders each node as `Type "text" [x,y,width,height]` when text and layout are available:
+Plain output uses two spaces per depth and renders each node as `Type "text" [x,y,width,height] style={...}` when text, layout, and style props are available. The `style` field uses a compact representation that omits quotes around identifier-like keys.
 
 ```text
 RCTView [0,0,390,844]
-  RCTText "Welcome to React Native" [65,230,271,28]
+  RCTText "Welcome to React Native" [65,230,271,28] style={fontSize:18}
 ```
 
 Unsupported query parameters are rejected. `listDevices=1` is not supported; use `GET /apps` instead.

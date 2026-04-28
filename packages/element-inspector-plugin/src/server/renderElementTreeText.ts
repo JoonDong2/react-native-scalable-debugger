@@ -1,9 +1,12 @@
-import type { ElementInspectorLayout } from '../shared/protocol';
+import type { ElementInspectorLayout, JSONValue } from '../shared/protocol';
 
 export interface RenderableElementTreeNode {
   type: string;
   text?: string;
   layout?: ElementInspectorLayout;
+  props?: {
+    style?: JSONValue;
+  };
   children?: RenderableElementTreeNode[];
 }
 
@@ -32,6 +35,9 @@ function appendNode(
   if (node.layout) {
     parts.push(renderLayout(node.layout));
   }
+  if (node.props?.style !== undefined) {
+    parts.push(`style=${renderCompactValue(node.props.style)}`);
+  }
 
   lines.push(parts.join(' '));
 
@@ -48,4 +54,30 @@ function renderLayout(layout: ElementInspectorLayout): string {
 
 function formatNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : 'null';
+}
+
+function renderCompactValue(value: JSONValue): string {
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value === 'string') {
+    return JSON.stringify(value);
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(renderCompactValue).join(',')}]`;
+  }
+
+  return `{${Object.entries(value)
+    .map(
+      ([key, childValue]) =>
+        `${renderCompactKey(key)}:${renderCompactValue(childValue)}`
+    )
+    .join(',')}}`;
+}
+
+function renderCompactKey(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
 }

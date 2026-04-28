@@ -61,11 +61,11 @@ curl -s "http://localhost:8081/element-inspector?appId=<id>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&compact=1&plain=1"
 ```
 
-Plain output은 depth마다 두 칸을 들여쓰며, text와 layout이 있으면 각 node를 `Type "text" [x,y,width,height]` 형식으로 렌더링합니다.
+Plain output은 depth마다 두 칸을 들여쓰며, text, layout, style prop이 있으면 각 node를 `Type "text" [x,y,width,height] style={...}` 형식으로 렌더링합니다. `style` field는 토큰을 줄이기 위한 compact 표현이며 identifier 형태의 key에는 따옴표를 붙이지 않습니다.
 
 ```text
 RCTView [0,0,390,844]
-  RCTText "Welcome to React Native" [65,230,271,28]
+  RCTText "Welcome to React Native" [65,230,271,28] style={fontSize:18}
 ```
 
 지원하지 않는 query parameter는 거부됩니다. `listDevices=1`은 지원하지 않습니다. 연결된 앱 목록은 `GET /apps`를 사용하세요.
