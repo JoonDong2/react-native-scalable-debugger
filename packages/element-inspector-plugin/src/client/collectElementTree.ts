@@ -18,6 +18,7 @@ const MAX_STYLE_DEPTH = 8;
 const IGNORED_ELEMENT_NAMES = new Set([
   'DebuggingOverlay',
   'LogBoxStateSubscription',
+  'PressabilityDebugView',
 ]);
 
 interface CollectContext {
