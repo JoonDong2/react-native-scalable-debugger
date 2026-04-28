@@ -10,8 +10,6 @@ import {
   type ReactFiberLike,
 } from './instrumentation/reactDevToolsHook';
 
-const MAX_DEPTH = 80;
-const MAX_NODES = 3000;
 const MAX_PROP_KEYS = 40;
 const MAX_ARRAY_ITEMS = 40;
 const MAX_STRING_LENGTH = 300;
@@ -21,8 +19,12 @@ const MAX_STYLE_DEPTH = 8;
 interface CollectContext {
   visited: Set<ReactFiberLike>;
   warnings: Set<string>;
-  nodeCount: number;
 }
+
+type PendingLayoutNode = Omit<ElementInspectorNode, 'children'> & {
+  children?: PendingLayoutNode[];
+  layoutTarget?: ReactFiberLike | null;
+};
 
 type MeasureCallback = (
   x: number,
@@ -61,7 +63,6 @@ export function collectElementTree(
     warnings: new Set([
       'Layout bounds were measured from the native inspector path and may vary across React Native versions.',
     ]),
-    nodeCount: 0,
   };
 
   return Promise.all(
@@ -105,59 +106,89 @@ export function collectElementTree(
 async function collectSiblings(
   fiber: ReactFiberLike | null,
   path: string,
-  depth: number,
+  _depth: number,
   context: CollectContext
 ): Promise<ElementInspectorNode[]> {
-  const fibers: ReactFiberLike[] = [];
-  let cursor: ReactFiberLike | null | undefined = fiber;
-  while (cursor) {
-    fibers.push(cursor);
-    cursor = cursor.sibling;
+  const rootFibers = getSiblingFibers(fiber);
+  const roots: PendingLayoutNode[] = [];
+  const stack: Array<{
+    fiber: ReactFiberLike;
+    parentChildren: PendingLayoutNode[];
+    path: string;
+  }> = [];
+  const layoutTasks: Promise<void>[] = [];
+  const createdNodes: PendingLayoutNode[] = [];
+
+  for (let index = rootFibers.length - 1; index >= 0; index -= 1) {
+    stack.push({
+      fiber: rootFibers[index],
+      parentChildren: roots,
+      path: `${path}.${index}`,
+    });
   }
 
-  const nodes = await Promise.all(
-    fibers.map((item, index) =>
-      fiberToNode(item, `${path}.${index}`, depth, context)
-    )
-  );
+  while (stack.length > 0) {
+    const item = stack.pop()!;
+    const node = fiberToNode(item.fiber, item.path, context);
+    if (!node) {
+      continue;
+    }
 
-  return nodes.filter((node): node is ElementInspectorNode => node != null);
+    item.parentChildren.push(node);
+    createdNodes.push(node);
+    layoutTasks.push(
+      measureLayout(node.layoutTarget ?? null).then((layout) => {
+        if (layout) {
+          node.layout = layout;
+        }
+        delete node.layoutTarget;
+      })
+    );
+
+    const childFibers = getSiblingFibers(item.fiber.child ?? null);
+    if (childFibers.length > 0) {
+      const children: PendingLayoutNode[] = [];
+      node.children = children;
+      for (let index = childFibers.length - 1; index >= 0; index -= 1) {
+        stack.push({
+          fiber: childFibers[index],
+          parentChildren: children,
+          path: `${item.path}.${index}`,
+        });
+      }
+    }
+  }
+
+  await Promise.all(layoutTasks);
+
+  for (const node of createdNodes) {
+    if (node.children && node.children.length === 0) {
+      delete node.children;
+    }
+  }
+
+  return roots;
 }
 
-async function fiberToNode(
+function fiberToNode(
   fiber: ReactFiberLike,
   path: string,
-  depth: number,
   context: CollectContext
-): Promise<ElementInspectorNode | null> {
+): PendingLayoutNode | null {
   if (context.visited.has(fiber)) {
     return null;
   }
   context.visited.add(fiber);
 
-  if (depth > MAX_DEPTH) {
-    context.warnings.add(`Tree traversal stopped at max depth ${MAX_DEPTH}.`);
-    return null;
-  }
-
-  if (context.nodeCount >= MAX_NODES) {
-    context.warnings.add(`Tree traversal stopped at max node count ${MAX_NODES}.`);
-    return null;
-  }
-
-  context.nodeCount += 1;
   const displayName = getDisplayName(fiber);
   const layoutTarget = findInspectableHostFiber(fiber);
   const rawProps = getProps(layoutTarget ?? fiber);
   const props = sanitizeProps(rawProps);
-  const [children, layout] = await Promise.all([
-    collectSiblings(fiber.child ?? null, path, depth + 1, context),
-    measureLayout(layoutTarget),
-  ]);
   const primitiveText = fiber.tag === 6 ? getDirectFiberText(fiber) : undefined;
 
-  const node: ElementInspectorNode = {
+  const node: PendingLayoutNode = {
     id: path,
+    layoutTarget,
     type: displayName,
     displayName,
   };
@@ -168,9 +199,6 @@ async function fiberToNode(
   if (props && Object.keys(props).length > 0) {
     node.props = props;
   }
-  if (layout) {
-    node.layout = layout;
-  }
   if (fiber._debugSource) {
     node.source = {
       fileName: fiber._debugSource.fileName,
@@ -178,11 +206,18 @@ async function fiberToNode(
       columnNumber: fiber._debugSource.columnNumber,
     };
   }
-  if (children.length > 0) {
-    node.children = children;
-  }
 
   return node;
+}
+
+function getSiblingFibers(fiber: ReactFiberLike | null): ReactFiberLike[] {
+  const fibers: ReactFiberLike[] = [];
+  let cursor: ReactFiberLike | null | undefined = fiber;
+  while (cursor) {
+    fibers.push(cursor);
+    cursor = cursor.sibling;
+  }
+  return fibers;
 }
 
 function getProps(
@@ -201,17 +236,30 @@ function findInspectableHostFiber(
     return null;
   }
 
-  if (isHostFiber(fiber)) {
-    return fiber;
-  }
+  const visited = new Set<ReactFiberLike>();
+  const stack: ReactFiberLike[] = [fiber];
 
-  let child = fiber.child ?? null;
-  while (child) {
-    const hostFiber = findInspectableHostFiber(child);
-    if (hostFiber) {
-      return hostFiber;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || visited.has(current)) {
+      continue;
     }
-    child = child.sibling ?? null;
+
+    visited.add(current);
+    if (isHostFiber(current)) {
+      return current;
+    }
+
+    const children: ReactFiberLike[] = [];
+    let child = current.child ?? null;
+    while (child && !visited.has(child)) {
+      children.push(child);
+      child = child.sibling ?? null;
+    }
+
+    for (let index = children.length - 1; index >= 0; index -= 1) {
+      stack.push(children[index]);
+    }
   }
 
   return null;
@@ -347,41 +395,43 @@ function getDisplayName(fiber: ReactFiberLike): string {
 }
 
 function getDisplayNameFromType(type: unknown): string | null {
-  if (typeof type === 'string') {
-    return type;
-  }
+  const seen = new Set<object>();
+  const stack: unknown[] = [type];
 
-  if (typeof type === 'function') {
-    return getNamedValue(type, 'displayName') ?? type.name ?? 'Anonymous';
-  }
-
-  if (!type || typeof type !== 'object') {
-    return null;
-  }
-
-  const displayName = getNamedValue(type, 'displayName');
-  if (displayName) {
-    return displayName;
-  }
-
-  const name = getNamedValue(type, 'name');
-  if (name) {
-    return name;
-  }
-
-  const nestedType = getObjectValue(type, 'type');
-  if (nestedType && nestedType !== type) {
-    const nestedName = getDisplayNameFromType(nestedType);
-    if (nestedName) {
-      return nestedName;
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current === 'string') {
+      return current;
     }
-  }
 
-  const render = getObjectValue(type, 'render');
-  if (render) {
-    const renderName = getDisplayNameFromType(render);
-    if (renderName) {
-      return renderName;
+    if (typeof current === 'function') {
+      return getNamedValue(current, 'displayName') ?? current.name ?? 'Anonymous';
+    }
+
+    if (!current || typeof current !== 'object' || seen.has(current)) {
+      continue;
+    }
+
+    seen.add(current);
+
+    const displayName = getNamedValue(current, 'displayName');
+    if (displayName) {
+      return displayName;
+    }
+
+    const name = getNamedValue(current, 'name');
+    if (name) {
+      return name;
+    }
+
+    const render = getObjectValue(current, 'render');
+    if (render) {
+      stack.push(render);
+    }
+
+    const nestedType = getObjectValue(current, 'type');
+    if (nestedType && nestedType !== current) {
+      stack.push(nestedType);
     }
   }
 
@@ -503,13 +553,25 @@ function getPrimitiveText(value: unknown): string | undefined {
   if (typeof value === 'string' || typeof value === 'number') {
     return String(value);
   }
-  if (Array.isArray(value)) {
-    const parts = value
-      .map(getPrimitiveText)
-      .filter((part): part is string => typeof part === 'string');
-    return parts.length > 0 ? parts.join('') : undefined;
+
+  if (!Array.isArray(value)) {
+    return undefined;
   }
-  return undefined;
+
+  const parts: string[] = [];
+  const stack = [...value].reverse();
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current === 'string' || typeof current === 'number') {
+      parts.push(String(current));
+    } else if (Array.isArray(current)) {
+      for (let index = current.length - 1; index >= 0; index -= 1) {
+        stack.push(current[index]);
+      }
+    }
+  }
+
+  return parts.length > 0 ? parts.join('') : undefined;
 }
 
 function getDirectFiberText(fiber: ReactFiberLike): string | undefined {
