@@ -1,4 +1,7 @@
 import { execFile } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type {
   ConnectedAppDeviceInfo,
   ConnectedAppTarget,
@@ -6,6 +9,8 @@ import type {
 
 interface HostDeviceInfo {
   id: string;
+  brand?: string;
+  manufacturer?: string;
   name?: string;
   model?: string;
   osVersion?: string;
@@ -18,7 +23,6 @@ interface CachedHostDeviceInfo {
 }
 
 const HOST_DEVICE_INFO_TTL_MS = 2000;
-const COMMAND_TIMEOUT_MS = 1000;
 const UNKNOWN_DEVICE_ID = 'unknown';
 
 let hostDeviceInfoCache: CachedHostDeviceInfo | null = null;
@@ -97,6 +101,13 @@ function resolveFromHostDevices(
     return matched[0].id;
   }
 
+  const osVersionMatched = hostDevices.filter((device) =>
+    hostDeviceOsVersionMatches(device, deviceInfo)
+  );
+  if (osVersionMatched.length === 1) {
+    return osVersionMatched[0].id;
+  }
+
   return hostDevices.length === 1 ? hostDevices[0].id : undefined;
 }
 
@@ -107,19 +118,35 @@ function hostDeviceMatches(
   const expectedNames = [
     deviceInfo?.deviceName,
     deviceInfo?.model,
+    deviceInfo?.brand,
+    deviceInfo?.manufacturer,
   ].map(normalizeComparableValue);
   const actualNames = [
     hostDevice.name,
     hostDevice.model,
+    hostDevice.brand,
+    hostDevice.manufacturer,
   ].map(normalizeComparableValue);
   const expectedOsVersion = normalizeComparableValue(deviceInfo?.osVersion);
   const actualOsVersion = normalizeComparableValue(hostDevice.osVersion);
 
   return (
     expectedNames.some(
-      (expected) => expected && actualNames.includes(expected)
+      (expected) =>
+        expected &&
+        actualNames.some((actual) => comparableValuesMatch(expected, actual))
     ) ||
-    (!!expectedOsVersion && expectedOsVersion === actualOsVersion)
+    comparableVersionsMatch(expectedOsVersion, actualOsVersion)
+  );
+}
+
+function hostDeviceOsVersionMatches(
+  hostDevice: HostDeviceInfo,
+  deviceInfo: ConnectedAppDeviceInfo | undefined
+): boolean {
+  return comparableVersionsMatch(
+    normalizeComparableValue(deviceInfo?.osVersion),
+    normalizeComparableValue(hostDevice.osVersion)
   );
 }
 
@@ -163,13 +190,18 @@ function parseAdbDeviceLine(line: string): HostDeviceInfo | null {
     return null;
   }
 
-  const model = details
-    .find((detail) => detail.startsWith('model:'))
-    ?.slice('model:'.length);
+  const detailMap = Object.fromEntries(
+    details
+      .map((detail) => detail.split(':'))
+      .filter(([key, value]) => key && value)
+  );
 
   return {
     id,
-    model,
+    brand: detailMap.brand,
+    manufacturer: detailMap.manufacturer,
+    model: detailMap.model,
+    name: detailMap.device,
   };
 }
 
@@ -191,29 +223,114 @@ async function listBootedIosSimulators(): Promise<HostDeviceInfo[]> {
     'booted',
   ]);
   if (!output) {
-    return [];
+    return listBootedIosSimulatorsFromDevicePlists();
   }
 
   try {
     const parsed = JSON.parse(output) as {
       devices?: Record<string, Array<{
+        deviceTypeIdentifier?: string;
         name?: string;
+        runtime?: string;
         udid?: string;
         state?: string;
       }>>;
     };
 
-    return Object.entries(parsed.devices ?? {})
+    const simulators = Object.entries(parsed.devices ?? {})
       .filter(([runtime]) => runtime.includes('iOS'))
-      .flatMap(([, devices]) => devices)
+      .flatMap(([runtime, devices]) =>
+        devices.map((device) => ({
+          ...device,
+          runtime,
+        }))
+      )
       .filter((device) => device.state === 'Booted' && !!device.udid)
       .map((device) => ({
         id: device.udid!,
+        model: formatCoreSimulatorDeviceType(device.deviceTypeIdentifier),
         name: device.name,
+        osVersion: formatCoreSimulatorRuntime(device.runtime),
       }));
+
+    return simulators.length > 0
+      ? simulators
+      : listBootedIosSimulatorsFromDevicePlists();
+  } catch {
+    return listBootedIosSimulatorsFromDevicePlists();
+  }
+}
+
+async function listBootedIosSimulatorsFromDevicePlists(): Promise<HostDeviceInfo[]> {
+  const devicesRoot = path.join(
+    os.homedir(),
+    'Library',
+    'Developer',
+    'CoreSimulator',
+    'Devices'
+  );
+  let deviceIds: string[] = [];
+  try {
+    deviceIds = fs.readdirSync(devicesRoot);
   } catch {
     return [];
   }
+
+  const devices = await Promise.all(
+    deviceIds.map(async (deviceId) => {
+      const plistPath = path.join(devicesRoot, deviceId, 'device.plist');
+      const output = await execFileSafely('/usr/libexec/PlistBuddy', [
+        '-c',
+        'Print',
+        plistPath,
+      ]);
+      return output ? parseCoreSimulatorDevicePlist(output) : null;
+    })
+  );
+
+  return devices.filter((device): device is HostDeviceInfo => device != null);
+}
+
+function parseCoreSimulatorDevicePlist(output: string): HostDeviceInfo | null {
+  const record: Record<string, string> = {};
+  for (const line of output.split('\n')) {
+    const match = line.trim().match(/^([^=]+?)\s=\s(.+)$/);
+    if (match) {
+      record[match[1].trim()] = match[2].trim();
+    }
+  }
+
+  if (
+    record.isDeleted === 'true' ||
+    record.state !== '3' ||
+    !record.runtime?.includes('iOS') ||
+    !record.UDID
+  ) {
+    return null;
+  }
+
+  return {
+    id: record.UDID,
+    model: formatCoreSimulatorDeviceType(record.deviceType),
+    name: record.name,
+    osVersion: formatCoreSimulatorRuntime(record.runtime),
+  };
+}
+
+function formatCoreSimulatorDeviceType(
+  deviceType: string | undefined
+): string | undefined {
+  return deviceType
+    ?.replace(/^com\.apple\.CoreSimulator\.SimDeviceType\./, '')
+    .replace(/-/g, ' ');
+}
+
+function formatCoreSimulatorRuntime(
+  runtime: string | undefined
+): string | undefined {
+  return runtime
+    ?.replace(/^com\.apple\.CoreSimulator\.SimRuntime\.iOS-/, '')
+    .replace(/-/g, '.');
 }
 
 async function listPhysicalIosDevices(): Promise<HostDeviceInfo[]> {
@@ -373,6 +490,30 @@ function normalizeComparableValue(value: string | undefined): string | undefined
     .replace(/_/g, ' ');
 }
 
+function comparableValuesMatch(
+  expected: string | undefined,
+  actual: string | undefined
+): boolean {
+  if (!expected || !actual) {
+    return false;
+  }
+  return expected === actual || expected.includes(actual) || actual.includes(expected);
+}
+
+function comparableVersionsMatch(
+  expected: string | undefined,
+  actual: string | undefined
+): boolean {
+  if (!expected || !actual) {
+    return false;
+  }
+  return (
+    expected === actual ||
+    expected.startsWith(`${actual}.`) ||
+    actual.startsWith(`${expected}.`)
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -393,16 +534,68 @@ function execFileSafely(
   command: string,
   args: readonly string[]
 ): Promise<string | null> {
+  const candidates = getCommandCandidates(command);
+
   return new Promise((resolve) => {
-    execFile(
-      command,
-      [...args],
-      {
-        timeout: COMMAND_TIMEOUT_MS,
-      },
-      (error, stdout) => {
-        resolve(error ? null : stdout);
+    const tryCandidate = (index: number): void => {
+      const candidate = candidates[index];
+      if (!candidate) {
+        resolve(null);
+        return;
       }
-    );
+
+      execFile(
+        candidate,
+        [...args],
+        (error, stdout) => {
+          if (!error && stdout) {
+            resolve(stdout);
+            return;
+          }
+          tryCandidate(index + 1);
+        }
+      );
+    };
+
+    tryCandidate(0);
   });
+}
+
+function getCommandCandidates(command: string): string[] {
+  if (command === 'adb') {
+    return uniqueStrings([
+      process.env.ADB,
+      getAndroidSdkCommand('adb'),
+      '/opt/homebrew/bin/adb',
+      '/usr/local/bin/adb',
+      command,
+    ]);
+  }
+
+  if (command === 'xcrun') {
+    return uniqueStrings([
+      process.env.XCRUN,
+      '/usr/bin/xcrun',
+      command,
+    ]);
+  }
+
+  return [command];
+}
+
+function getAndroidSdkCommand(command: string): string | undefined {
+  const sdkRoot = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
+  return sdkRoot ? path.join(sdkRoot, 'platform-tools', command) : undefined;
+}
+
+function uniqueStrings(
+  values: readonly (string | undefined)[]
+): string[] {
+  return Array.from(
+    new Set(
+      values.filter(
+        (value): value is string => typeof value === 'string' && value.length > 0
+      )
+    )
+  );
 }
