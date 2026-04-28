@@ -2,6 +2,7 @@ import type { ElementInspectorLayout, JSONValue } from '../shared/protocol';
 
 export interface RenderableElementTreeNode {
   type: string;
+  displayName?: string;
   text?: string;
   layout?: ElementInspectorLayout;
   props?: {
@@ -27,7 +28,8 @@ function appendNode(
   node: RenderableElementTreeNode,
   depth: number
 ): void {
-  const parts = [`${'  '.repeat(depth)}${node.type}`];
+  const label = node.displayName ?? node.type;
+  const parts = [`${'  '.repeat(depth)}${label}`];
 
   if (node.text !== undefined) {
     parts.push(JSON.stringify(node.text));

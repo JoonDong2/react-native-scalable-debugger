@@ -30,6 +30,11 @@ type PendingLayoutNode = Omit<ElementInspectorNode, 'children'> & {
   layoutTarget?: ReactFiberLike | null;
 };
 
+interface ElementNames {
+  type: string;
+  displayName: string;
+}
+
 type MeasureCallback = (
   x: number,
   y: number,
@@ -137,8 +142,8 @@ async function collectSiblings(
       continue;
     }
 
-    const displayName = getDisplayName(item.fiber);
-    if (shouldIgnoreElement(displayName)) {
+    const names = getElementNames(item.fiber);
+    if (shouldIgnoreElement(names)) {
       context.visited.add(item.fiber);
       pushChildFibers(stack, item.fiber, item.parentChildren, item.path);
       continue;
@@ -221,7 +226,7 @@ function fiberToNode(
   }
   context.visited.add(fiber);
 
-  const displayName = getDisplayName(fiber);
+  const names = getElementNames(fiber);
   const layoutTarget = findInspectableHostFiber(fiber);
   const rawProps = getProps(layoutTarget ?? fiber);
   const props = sanitizeProps(rawProps);
@@ -230,8 +235,8 @@ function fiberToNode(
   const node: PendingLayoutNode = {
     id: path,
     layoutTarget,
-    type: displayName,
-    displayName,
+    type: names.type,
+    displayName: names.displayName,
   };
 
   if (primitiveText) {
@@ -261,8 +266,11 @@ function getSiblingFibers(fiber: ReactFiberLike | null): ReactFiberLike[] {
   return fibers;
 }
 
-function shouldIgnoreElement(displayName: string): boolean {
-  return IGNORED_ELEMENT_NAMES.has(displayName);
+function shouldIgnoreElement(names: ElementNames): boolean {
+  return (
+    IGNORED_ELEMENT_NAMES.has(names.type) ||
+    IGNORED_ELEMENT_NAMES.has(names.displayName)
+  );
 }
 
 function getProps(
@@ -434,12 +442,18 @@ function isHostFiber(fiber: ReactFiberLike): boolean {
   return fiber.tag === 5 || fiber.tag === 6;
 }
 
-function getDisplayName(fiber: ReactFiberLike): string {
+function getElementNames(fiber: ReactFiberLike): ElementNames {
   const type = fiber.elementType ?? fiber.type;
-  return getDisplayNameFromType(type) ?? getDisplayNameFromTag(fiber.tag);
+  const displayName = getExplicitDisplayNameFromType(type);
+  const typeName =
+    getTypeNameFromType(type) ?? displayName ?? getDisplayNameFromTag(fiber.tag);
+  return {
+    type: typeName,
+    displayName: displayName ?? typeName,
+  };
 }
 
-function getDisplayNameFromType(type: unknown): string | null {
+function getTypeNameFromType(type: unknown): string | null {
   const seen = new Set<object>();
   const stack: unknown[] = [type];
 
@@ -450,7 +464,42 @@ function getDisplayNameFromType(type: unknown): string | null {
     }
 
     if (typeof current === 'function') {
-      return getNamedValue(current, 'displayName') ?? current.name ?? 'Anonymous';
+      return current.name || 'Anonymous';
+    }
+
+    if (!current || typeof current !== 'object' || seen.has(current)) {
+      continue;
+    }
+
+    seen.add(current);
+
+    const name = getNamedValue(current, 'name');
+    if (name) {
+      return name;
+    }
+
+    const render = getObjectValue(current, 'render');
+    if (render) {
+      stack.push(render);
+    }
+
+    const nestedType = getObjectValue(current, 'type');
+    if (nestedType && nestedType !== current) {
+      stack.push(nestedType);
+    }
+  }
+
+  return null;
+}
+
+function getExplicitDisplayNameFromType(type: unknown): string | null {
+  const seen = new Set<object>();
+  const stack: unknown[] = [type];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current === 'function') {
+      return getNamedValue(current, 'displayName');
     }
 
     if (!current || typeof current !== 'object' || seen.has(current)) {
@@ -462,11 +511,6 @@ function getDisplayNameFromType(type: unknown): string | null {
     const displayName = getNamedValue(current, 'displayName');
     if (displayName) {
       return displayName;
-    }
-
-    const name = getNamedValue(current, 'name');
-    if (name) {
-      return name;
     }
 
     const render = getObjectValue(current, 'render');
@@ -648,7 +692,7 @@ function getNamedValue(object: unknown, key: string): string | null {
 }
 
 function getObjectValue(object: unknown, key: string): unknown {
-  return object && typeof object === 'object'
+  return object && (typeof object === 'object' || typeof object === 'function')
     ? (object as Record<string, unknown>)[key]
     : undefined;
 }

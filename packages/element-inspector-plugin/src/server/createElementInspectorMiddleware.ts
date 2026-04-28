@@ -4,16 +4,18 @@ import type {
 } from 'react-native-scalable-debugger/plugin';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { ElementInspectorController } from './ElementInspectorController';
+import type { ElementInspectorNode } from '../shared/protocol';
 import { compactElementTree } from './compactElementTree';
 import { renderElementTreeText } from './renderElementTreeText';
 import { stringifyJson } from '../shared/stringifyJson';
 
 const SUPPORTED_QUERY_PARAMS = new Set([
   'appId',
+  'start',
   'compact',
   'plain',
 ]);
-const SUPPORTED_QUERY_PARAMS_MESSAGE = 'appId, compact, and plain';
+const SUPPORTED_QUERY_PARAMS_MESSAGE = 'appId, start, compact, and plain';
 
 export function createElementInspectorMiddleware(
   controller: ElementInspectorController
@@ -52,15 +54,20 @@ export function createElementInspectorMiddleware(
 
     const compact = parseModeFlag(requestUrl.searchParams.get('compact'));
     const plain = parseModeFlag(requestUrl.searchParams.get('plain'));
+    const start = parseStartType(requestUrl.searchParams.get('start'));
     const result = await controller.requestSnapshot(context, {
       appId: requestUrl.searchParams.get('appId') ?? undefined,
     });
 
     if (result.ok) {
-      const snapshotRoot =
-        compact && result.snapshot.root
-          ? compactElementTree(result.snapshot.root) ?? undefined
+      const startedRoot =
+        start && result.snapshot.root
+          ? findStartNode(result.snapshot.root, start)
           : result.snapshot.root;
+      const snapshotRoot =
+        compact && startedRoot
+          ? compactElementTree(startedRoot) ?? undefined
+          : startedRoot;
 
       if (plain) {
         writeText(
@@ -94,6 +101,31 @@ function getUnsupportedQueryParams(searchParams: URLSearchParams): string[] {
 
 function parseModeFlag(value: string | null): boolean {
   return value === '1';
+}
+
+function parseStartType(value: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function findStartNode(
+  root: ElementInspectorNode,
+  type: string
+): ElementInspectorNode | undefined {
+  const stack = [root];
+
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    if ((node.displayName ?? node.type) === type) {
+      return node;
+    }
+
+    for (const child of node.children ?? []) {
+      stack.push(child);
+    }
+  }
+
+  return undefined;
 }
 
 function withoutStatusCode<T extends { statusCode: number }>(

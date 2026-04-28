@@ -46,10 +46,13 @@ curl -s "http://localhost:8081/element-inspector?appId=<id>"
 지원하는 query parameter:
 
 - `appId`: `GET /apps`에서 얻은 연결된 앱 ID.
-- `compact`: `1`을 전달하면 width 또는 height가 0인 node를 제거하고, 단순 React Native wrapper pair를 flatten하며, tree node에 `type`, `layout`, `text`, `props.style`, `source`, 비어 있지 않은 `children`만 남깁니다.
-- `plain`: `1`을 전달하면 JSON 대신 들여쓰기 기반 `text/plain` tree를 반환합니다.
+- `start`: response root로 사용할 선택적 component name. Component가 `displayName`을 정의하면 그 값과 비교하고, 없으면 `type`과 비교합니다. tree를 root부터 DFS로 탐색하되 children은 오른쪽부터 방문하며, 처음 일치하는 node를 반환 root로 사용합니다. 일치하는 node가 없으면 빈 tree를 반환합니다.
+- `compact`: `1`을 전달하면 width 또는 height가 0인 node를 제거하고, 단순 React Native wrapper pair를 flatten하며, tree node에 `type`, `displayName`, `layout`, `text`, `props.style`, `source`, 비어 있지 않은 `children`만 남깁니다.
+- `plain`: `1`을 전달하면 JSON 대신 들여쓰기 기반 `text/plain` tree를 반환합니다. Plain text node label은 `displayName`이 있으면 그 값을 사용하고, 없으면 `type`을 사용합니다.
 
 Snapshot은 기본 JSON response를 포함한 모든 mode에서 `DebuggingOverlay`와 `LogBoxStateSubscription`이라는 React Native 개발 UI node를 생략합니다.
+
+JSON response는 element node에 `displayName`을 포함합니다. Component가 `displayName`을 정의하지 않으면 이 field는 node `type`으로 fallback됩니다.
 
 `GET /element-inspector`는 항상 앱 런타임에 새 스냅샷을 요청합니다. 캐시된 element tree를 반환하지 않습니다.
 
@@ -58,6 +61,7 @@ Snapshot은 기본 JSON response를 포함한 모든 mode에서 `DebuggingOverla
 `compact`와 `plain`은 값이 `1`일 때만 활성화됩니다. 값이 없거나 비어 있거나 `0`이면 비활성 상태로 처리됩니다. `compact=1&plain=1`을 함께 사용하면 tree를 먼저 compact 처리한 뒤 plain text renderer가 실행됩니다.
 
 ```sh
+curl -s "http://localhost:8081/element-inspector?appId=<id>&start=RCTView"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&compact=1"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&compact=1&plain=1"

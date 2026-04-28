@@ -7,6 +7,7 @@ import type {
 
 export interface CompactElementInspectorNode {
   type: string;
+  displayName?: string;
   layout?: ElementInspectorLayout;
   text?: string;
   props?: {
@@ -42,6 +43,9 @@ function compactNode(
     type: node.type,
   };
 
+  if (node.displayName !== undefined) {
+    output.displayName = node.displayName;
+  }
   if (node.layout) {
     output.layout = node.layout;
   }

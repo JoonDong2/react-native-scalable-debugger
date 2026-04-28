@@ -100,16 +100,20 @@ Use `GET /apps` first, then pass the selected `appId`. If only one app is connec
 Supported query parameters:
 
 - `appId`: connected app id from `GET /apps`.
-- `compact`: pass `1` to remove zero-size nodes, flatten simple React Native wrapper pairs, and keep only `type`, `layout`, `text`, `props.style`, `source`, and non-empty `children` on tree nodes.
-- `plain`: pass `1` to return an indented `text/plain` tree instead of JSON.
+- `start`: optional component name to use as the response root. Matching uses `displayName` when a component defines one, otherwise `type`. The tree is searched with DFS from the root, visiting children from right to left, and the first matching node becomes the returned root. If no node matches, an empty tree is returned.
+- `compact`: pass `1` to remove zero-size nodes, flatten simple React Native wrapper pairs, and keep only `type`, `displayName`, `layout`, `text`, `props.style`, `source`, and non-empty `children` on tree nodes.
+- `plain`: pass `1` to return an indented `text/plain` tree instead of JSON. Plain text node labels use `displayName` when present, otherwise `type`.
 
 Snapshots omit React Native development UI nodes named `DebuggingOverlay` and `LogBoxStateSubscription` in all modes, including the default JSON response.
+
+JSON responses include `displayName` on element nodes. When a component does not define `displayName`, the field falls back to the node `type`.
 
 Unsupported query parameters are rejected. `listDevices=1` is not supported; use `GET /apps` instead.
 
 Only the value `1` enables `compact` and `plain`; missing values, empty values, and `0` leave the mode disabled. When `compact=1&plain=1` are used together, compaction runs first and the plain response contains only the rendered tree.
 
 ```sh
+curl -s "http://localhost:8081/element-inspector?appId=<appId>&start=RCTView"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1&plain=1"

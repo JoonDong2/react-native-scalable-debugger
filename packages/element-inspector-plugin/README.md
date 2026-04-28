@@ -46,10 +46,13 @@ curl -s "http://localhost:8081/element-inspector?appId=<id>"
 Supported query parameters:
 
 - `appId`: connected app id from `GET /apps`.
-- `compact`: pass `1` to prune zero-size nodes, flatten simple React Native wrapper pairs, and keep only `type`, `layout`, `text`, `props.style`, `source`, and non-empty `children` on tree nodes.
-- `plain`: pass `1` to return an indented `text/plain` tree instead of JSON.
+- `start`: optional component name to use as the response root. Matching uses `displayName` when a component defines one, otherwise `type`. The tree is searched with DFS from the root, visiting children from right to left, and the first matching node becomes the returned root. If no node matches, an empty tree is returned.
+- `compact`: pass `1` to prune zero-size nodes, flatten simple React Native wrapper pairs, and keep only `type`, `displayName`, `layout`, `text`, `props.style`, `source`, and non-empty `children` on tree nodes.
+- `plain`: pass `1` to return an indented `text/plain` tree instead of JSON. Plain text node labels use `displayName` when present, otherwise `type`.
 
 Snapshots omit React Native development UI nodes named `DebuggingOverlay` and `LogBoxStateSubscription` in all modes, including the default JSON response.
+
+JSON responses include `displayName` on element nodes. When a component does not define `displayName`, the field falls back to the node `type`.
 
 `GET /element-inspector` always asks the app runtime for a fresh snapshot. It does not return a cached element tree.
 
@@ -58,6 +61,7 @@ If only one app is connected, `appId` may be omitted. If multiple apps are conne
 Only the value `1` enables `compact` and `plain`; missing values, empty values, and `0` leave the mode disabled. When `compact=1&plain=1` are used together, the tree is compacted before the plain text renderer runs.
 
 ```sh
+curl -s "http://localhost:8081/element-inspector?appId=<id>&start=RCTView"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&compact=1"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<id>&compact=1&plain=1"
