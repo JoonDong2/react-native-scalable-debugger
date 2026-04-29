@@ -2,19 +2,39 @@
 
 [한국어](README.ko.md)
 
-Monorepo for a plugin-oriented React Native debugger server. It provides a replacement `start` command, an AppProxy for connected app runtimes, plugin HTTP/WebSocket endpoints, app-side client bootstrap injection, and debugger-frontend customization hooks.
+`react-native-scalable-debugger` is a monorepo for a plugin-oriented React Native debugger server.
 
-## Packages
+The project is split into a small core package and focused plugins so you can use only the pieces you need.
 
-- `react-native-scalable-debugger`: core server, client bootstrap, and plugin API.
-- `react-native-scalable-debugger-network-plugin`: Network panel support for HTTP and WebSocket traffic.
-- `react-native-scalable-debugger-element-inspector-plugin`: REST/WebSocket element tree snapshots for connected React Native apps.
+## Overview
 
-## Publishing
+This repository gives you a debugger stack that is easier to extend than the default React Native setup.
 
-Packages are published by GitHub Actions on pushes to `main`. The workflow publishes only packages with changes under their package directory. See [Publishing](docs/publishing.md) for the versioning and release rules.
+It is built around:
+
+- a core debugger server that connects to React Native apps
+- a public `appId` selector for routing requests to the right app
+- a plugin system for adding HTTP endpoints, WebSocket endpoints, and debugger hooks
+- focused plugins for network inspection and live element-tree inspection
+
+If you only want a quick summary: the core package starts the server, and the plugins add specialized debugging features on top of it.
+
+## Why It Exists
+
+React Native's built-in debugging tools are useful for basic work, but they become limiting when you need a more controlled workflow.
+
+This monorepo exists because:
+
+- the default network panel is not enough when you need to inspect socket traffic
+- you may want to inspect the live UI hierarchy from the development host
+- you may want to customize the debugger frontend without forking the whole debugger stack
+- different debugging needs are easier to maintain as separate plugins than as one large package
+
+The goal is to keep the core debugger small and predictable while letting plugins add the behavior you actually need.
 
 ## Usage
+
+Start with the core package and register only the plugins you want.
 
 ```js
 const { startCommand } = require('react-native-scalable-debugger');
@@ -36,196 +56,25 @@ module.exports = {
 };
 ```
 
-## App Identity
+Useful endpoints:
 
-The core server exposes an `appId` for each connected React Native runtime. External tools should use this `appId` when selecting an app.
+- `GET /apps` from `react-native-scalable-debugger` to discover connected apps, their `appId` values, and the device identifier the host OS recognizes for each app
+- `GET /element-inspector` from `react-native-scalable-debugger-element-inspector-plugin` to fetch the live element tree for a connected app
 
-`appId` is exposed because the debugger server can have more than one connected app at the same time, including multiple emulators or physical devices. The REST endpoints need a stable public selector that points to the AppProxy connection that will receive a request. The server still keeps internal device metadata for compatibility and diagnostics, but public APIs select by `appId`.
+If only one app is connected, `appId` can usually be omitted. If more than one app is connected, pass `appId` so the request reaches the intended runtime.
 
-## `GET /apps`
+The `deviceInfo.deviceId` field from `GET /apps` is useful when you want to target a specific device with tools such as Maestro CLI, then capture a layout tree snapshot with the [element inspector plugin](packages/element-inspector-plugin/README.md) for that exact app state.
 
-The core AppProxy provides:
+## Packages
 
-```sh
-curl -s "http://localhost:8081/apps"
-```
+- `react-native-scalable-debugger`: the core debugger server. It provides `startCommand`, the AppProxy that tracks connected apps, and the plugin API for custom endpoints and debugger hooks. See [package README](packages/react-native-scalable-debugger/README.md).
+- `react-native-scalable-debugger-network-plugin`: the network inspection plugin. Use it when you need better visibility into HTTP requests and WebSocket traffic than the stock React Native network panel provides. It also patches the debugger frontend so socket traffic can be shown separately from Fetch/XHR traffic. See [package README](packages/network-plugin/README.md).
+- `react-native-scalable-debugger-element-inspector-plugin`: the live element-tree inspection plugin. Use it when you want to inspect the current React Native UI hierarchy from the development host, compact the tree, render it as plain text for an agent or script, or capture a snapshot after driving the app into a specific state with a host-side tool such as Maestro CLI. See [package README](packages/element-inspector-plugin/README.md).
 
-This returns the connected React Native apps, the `appId` values to use with plugin endpoints, and device metadata such as `deviceInfo.deviceId`.
+## Package Docs
 
-Example shape:
+Each package has its own README with more detail:
 
-```json
-{
-  "ok": true,
-  "apps": [
-    {
-      "appId": "skw4tbpgjn",
-      "name": "Pixel 8",
-      "deviceInfo": {
-        "deviceId": "emulator-5554",
-        "platform": "android",
-        "os": "android",
-        "deviceName": "Pixel 8",
-        "isEmulator": true,
-        "reactNativeVersion": "0.85.2"
-      },
-      "connected": true,
-      "connectedAt": 1777219200000,
-      "hasDebugger": true
-    }
-  ]
-}
-```
-
-`appId` is the selector for all external requests. `deviceInfo.deviceId` is metadata for external automation tools such as Maestro.
-
-Device identifiers are resolved in this order:
-
-1. The app runtime reports `deviceInfo.deviceId` from React Native `Platform.constants` when a native identifier is available.
-2. If the runtime does not provide an identifier, the server enriches `/apps` from host-side tools. Android uses `adb devices -l`; iOS uses `xcrun simctl list --json devices booted` for simulators and `xcrun devicectl list devices --json-output -` or `xcrun xctrace list devices` for physical devices.
-3. Host devices are matched to the connected app by comparable runtime metadata such as device name, model, and OS version. If there is only one host device for the app platform, that device id is used as the fallback match.
-
-When no Android or iOS device identifier can be resolved, `deviceInfo.deviceId` is set to `"unknown"`.
-
-## `GET /element-inspector`
-
-The element inspector plugin provides:
-
-```sh
-curl -s "http://localhost:8081/element-inspector?appId=<appId>"
-```
-
-Use `GET /apps` first, then pass the selected `appId`. If only one app is connected, `appId` may be omitted. If multiple apps are connected, the endpoint requires `appId` so it can route the request to the correct runtime.
-
-Supported query parameters:
-
-- `appId`: connected app id from `GET /apps`.
-- `start`: optional component name to use as the response root. Matching uses `displayName` when a component defines one, otherwise `type`. The tree is searched with DFS from the root, visiting children from right to left, and the first matching node becomes the returned root. If no node matches, an empty tree is returned.
-- `compact`: pass `1` to remove zero-size nodes, flatten simple React Native wrapper pairs, flatten top-level `props.style` arrays into one object, and keep only `type`, `displayName`, `layout`, `text`, `props.style`, `source`, and non-empty `children` on tree nodes.
-- `plain`: pass `1` to return an indented `text/plain` tree instead of JSON. Plain text node labels use `displayName` when present, otherwise `type`.
-- `layoutPrecision`: number of decimal places to keep in `layout` values. The default is `1`.
-
-Snapshots omit React Native development UI nodes named `DebuggingOverlay` and `LogBoxStateSubscription` in all modes, including the default JSON response.
-
-JSON responses include `displayName` on element nodes. When a component does not define `displayName`, the field falls back to the node `type`.
-
-Unsupported query parameters are rejected. `listDevices=1` is not supported; use `GET /apps` instead.
-
-Only the value `1` enables `compact` and `plain`; missing values, empty values, and `0` leave the mode disabled. When `compact=1&plain=1` are used together, compaction runs first and the plain response contains only the rendered tree.
-
-```sh
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&start=RCTView"
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1"
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1"
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1&plain=1"
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&layoutPrecision=2"
-```
-
-Plain output renders one node per line, with two spaces per depth, layouts formatted as `[x,y,width,height]`, and style props formatted as compact `style={...}` values such as `style={fontSize:18}`. `layout` values use the same decimal precision as the JSON response and default to one decimal place.
-
-`GET /element-inspector` asks the app runtime for a fresh snapshot when the request is made. It does not serve a cached element tree. The plugin is intended for tools such as MCP servers and LLM agents that need to inspect the current React Native output from the development host.
-
-## Network Plugin
-
-The network plugin exists because the built-in React Native debugger network panel does not provide enough socket visibility for this workflow: WebSocket traffic is not tracked as a first-class stream and there is no socket-specific filter in the stock frontend.
-
-`react-native-scalable-debugger-network-plugin` adds app-side HTTP and WebSocket instrumentation and contributes to the CDP `Network` domain so the debugger can inspect the traffic. It also exports `patchDebuggerFrontend`, which adds a WebSocket category/filter to the debugger frontend when used with `startCommand`.
-
-## Debugger Frontend Customization
-
-The base debugger frontend is configured on `startCommand`, not on an individual plugin. Plugins may expose patch functions that are merged into the start command options.
-
-```js
-const { startCommand } = require('react-native-scalable-debugger');
-const {
-  networkPanelPlugin,
-  patchDebuggerFrontend,
-} = require('react-native-scalable-debugger-network-plugin');
-
-module.exports = {
-  commands: [
-    startCommand(
-      {
-        debuggerFrontend: {
-          path: '/absolute/path/to/custom/third-party/front_end',
-          sourceDist: '/absolute/path/to/@react-native/debugger-frontend/dist',
-        },
-      },
-      networkPanelPlugin({ patchDebuggerFrontend }),
-    ),
-  ],
-};
-```
-
-If no custom base frontend is provided, the server resolves `@react-native/debugger-frontend` from the consuming React Native project and applies any plugin patches to that frontend.
-
-## Creating a Plugin
-
-The debugger server can be extended using plugins that implement the `ScalableDebuggerPlugin` interface. A plugin can inject code into the client app, expose HTTP and WebSocket endpoints, and intercept Chrome DevTools Protocol (CDP) messages.
-
-```typescript
-import type { ScalableDebuggerPlugin } from 'react-native-scalable-debugger';
-
-export const myCustomPlugin = (): ScalableDebuggerPlugin => ({
-  name: 'my-custom-plugin',
-  
-  // 1. Inject client-side code into the React Native app
-  clientEntries: [
-    { importPath: require.resolve('./client/my-plugin-client') }
-  ],
-  
-  // 2. Add custom HTTP REST endpoints
-  middlewareEndpoints: [
-    {
-      path: '/my-custom-endpoint',
-      handler: (req, res, context, next) => {
-        const apps = context.socketContext.listAppConnections();
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, apps: apps.length }));
-      }
-    }
-  ],
-  
-  // 3. Add custom WebSocket endpoints
-  websocketEndpoints: [
-    {
-      path: '/my-custom-ws',
-      server: (req, context) => {
-        // Return a ws.WebSocketServer instance
-        return myWebSocketServerInstance;
-      }
-    }
-  ],
-  
-  // 4. Intercept or add CDP (Chrome DevTools Protocol) Domains
-  domains: [
-    (context) => ({
-      domainName: 'MyCustomDomain',
-      handleDebuggerMessage: (payload) => {
-        // Handle messages from the debugger frontend
-        if (payload.method === 'MyCustomDomain.enable') {
-          return true; // Return true to stop propagation
-        }
-      },
-      handleDeviceMessage: (payload) => {
-        // Handle messages from the device
-      }
-    })
-  ]
-});
-```
-
-### Plugin Features
-
-- **`clientEntries`**: Absolute paths to modules that will be automatically imported into the React Native app when it connects to the debugger. This is useful for injecting instrumentation or interceptors.
-- **`middlewareEndpoints`**: Custom REST API endpoints mounted on the Metro server. Use the `context.socketContext` to interact with connected apps.
-- **`websocketEndpoints`**: Custom WebSocket servers mounted on the Metro server at specific paths.
-- **`domains`**: Custom handlers for CDP domains. You can use this to add new domains or intercept messages for existing domains (e.g., `Network`, `Debugger`, `Runtime`) between the React Native app and the debugger frontend.
-
-## Development
-
-```sh
-yarn install
-yarn build
-yarn typecheck
-```
+- [Core package README](packages/react-native-scalable-debugger/README.md)
+- [Network plugin README](packages/network-plugin/README.md)
+- [Element inspector plugin README](packages/element-inspector-plugin/README.md)
