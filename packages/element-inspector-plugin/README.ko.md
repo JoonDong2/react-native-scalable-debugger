@@ -46,6 +46,7 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>"
 - `compact`: `1`을 전달하면 zero-size node를 제거하고 단순 wrapper pair를 flatten하며, 응답에서 필요한 필드만 남깁니다
 - `plain`: `1`을 전달하면 JSON 대신 들여쓰기된 `text/plain` tree를 반환합니다
 - `layoutPrecision`: `layout` 값에 남길 소수점 자릿수
+- `nodeId`: node id 출력 여부를 제어합니다. `1`을 전달하면 node id를 포함하고, `0`을 전달하면 JSON output에서도 제거합니다. 생략하면 기본 JSON response는 node id를 유지하고 compact/plain output은 node id를 생략합니다.
 
 `compact`와 `plain`은 값이 `1`일 때만 활성화됩니다. 값이 없거나 비어 있거나 `0`이면 비활성 상태로 처리됩니다.
 
@@ -59,6 +60,7 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>&start=RCTView"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1&plain=1"
+curl -s "http://localhost:8081/element-inspector?appId=<appId>&compact=1&plain=1&nodeId=1"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&layoutPrecision=2"
 ```
 
@@ -72,11 +74,11 @@ element inspector plugin은 root node 선택, wrapper flatten, plain text 변환
 
 가상환경이 아닌 개발 호스트 환경에서 live element tree를 직접 확인할 수 있습니다.
 
-Plain output은 depth마다 두 칸을 들여쓰며, text, layout, style prop이 있으면 각 node를 `Type "text" [x,y,width,height] style={...}` 형식으로 렌더링합니다. `style` field는 token을 줄이기 위한 compact 표현이며 identifier 형태의 key에는 따옴표를 붙이지 않습니다. `layout` 값은 JSON response와 같은 소수점 자릿수를 사용하고, 기본값은 소수점 첫째 자리입니다.
+Plain output은 depth마다 두 칸을 들여쓰며, text, layout, style prop이 있으면 각 node를 `Type "text" [x,y,width,height] style={...}` 형식으로 렌더링합니다. `nodeId=1`이 활성화되면 node id를 `id=<id>` 형식으로 렌더링합니다. `style` field는 token을 줄이기 위한 compact 표현이며 identifier 형태의 key에는 따옴표를 붙이지 않습니다. `layout` 값은 JSON response와 같은 소수점 자릿수를 사용하고, 기본값은 소수점 첫째 자리입니다.
 
 ```text
-RCTView [0,0,390,844]
-  RCTText "Welcome to React Native" [65,230,271,28] style={fontSize:18}
+RCTView id=root.0 [0,0,390,844]
+  RCTText id=root.0.1 "Welcome to React Native" [65,230,271,28] style={fontSize:18}
 ```
 
 ## 출력 노트
@@ -84,6 +86,8 @@ RCTView [0,0,390,844]
 Snapshot은 기본 JSON response를 포함한 모든 mode에서 `DebuggingOverlay`와 `LogBoxStateSubscription`이라는 React Native 개발 UI node를 생략합니다.
 
 JSON response는 element node에 `displayName`을 포함합니다. Component가 `displayName`을 정의하지 않으면 이 field는 node `type`으로 fallback됩니다.
+
+Compact JSON과 plain text response는 `nodeId=1`이 전달되었을 때 node id를 유지하므로 다른 도구가 compact tree를 읽은 뒤 특정 node에 action을 수행할 수 있습니다. Wrapper node가 collapse되면 남는 child는 자신의 원래 `id`를 유지합니다.
 
 ## 앱 식별자
 

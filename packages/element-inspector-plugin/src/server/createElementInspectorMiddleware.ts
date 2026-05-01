@@ -15,12 +15,14 @@ const SUPPORTED_QUERY_PARAMS = new Set([
   'compact',
   'plain',
   'layoutPrecision',
+  'nodeId',
 ]);
 const SUPPORTED_QUERY_PARAMS_MESSAGE =
-  'appId, start, compact, plain, and layoutPrecision';
+  'appId, start, compact, plain, layoutPrecision, and nodeId';
 const DEFAULT_LAYOUT_PRECISION = 1;
 
 interface LayoutTreeNode {
+  id?: string;
   layout?: ElementInspectorLayout;
   children?: LayoutTreeNode[];
 }
@@ -66,6 +68,8 @@ export function createElementInspectorMiddleware(
     const layoutPrecision = parseLayoutPrecision(
       requestUrl.searchParams.get('layoutPrecision')
     );
+    const nodeId = parseOptionalModeFlag(requestUrl.searchParams.get('nodeId'));
+    const includeNodeId = nodeId ?? (!compact && !plain);
     const result = await controller.requestSnapshot(context, {
       appId: requestUrl.searchParams.get('appId') ?? undefined,
     });
@@ -77,15 +81,18 @@ export function createElementInspectorMiddleware(
           : result.snapshot.root;
       const snapshotRoot =
         compact && startedRoot
-          ? compactElementTree(startedRoot) ?? undefined
+          ? compactElementTree(startedRoot, { includeNodeId }) ?? undefined
           : startedRoot;
       normalizeLayoutPrecision(snapshotRoot, layoutPrecision);
+      if (!includeNodeId) {
+        removeNodeIds(snapshotRoot);
+      }
 
       if (plain) {
         writeText(
           response,
           result.statusCode,
-          renderElementTreeText(snapshotRoot)
+          renderElementTreeText(snapshotRoot, { includeNodeId })
         );
         return;
       }
@@ -112,6 +119,13 @@ function getUnsupportedQueryParams(searchParams: URLSearchParams): string[] {
 }
 
 function parseModeFlag(value: string | null): boolean {
+  return value === '1';
+}
+
+function parseOptionalModeFlag(value: string | null): boolean | undefined {
+  if (value == null) {
+    return undefined;
+  }
   return value === '1';
 }
 
@@ -168,6 +182,17 @@ function normalizeLayoutPrecision(
 
   for (const child of node.children ?? []) {
     normalizeLayoutPrecision(child, precision);
+  }
+}
+
+function removeNodeIds(node: LayoutTreeNode | undefined): void {
+  if (!node) {
+    return;
+  }
+
+  delete node.id;
+  for (const child of node.children ?? []) {
+    removeNodeIds(child);
   }
 }
 

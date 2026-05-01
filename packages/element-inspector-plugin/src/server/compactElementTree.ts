@@ -6,6 +6,7 @@ import type {
 } from '../shared/protocol';
 
 export interface CompactElementInspectorNode {
+  id?: string;
   type: string;
   displayName?: string;
   layout?: ElementInspectorLayout;
@@ -19,6 +20,10 @@ export interface CompactElementInspectorNode {
 
 type JSONObject = { [key: string]: JSONValue };
 
+export interface CompactElementTreeOptions {
+  includeNodeId?: boolean;
+}
+
 const IGNORED_ELEMENT_NAMES = new Set([
   'DebuggingOverlay',
   'LogBoxStateSubscription',
@@ -26,25 +31,30 @@ const IGNORED_ELEMENT_NAMES = new Set([
 const TEXT_HOST_TYPES = new Set(['RCTText', 'TextImplLegacy']);
 
 export function compactElementTree(
-  node: ElementInspectorNode
+  node: ElementInspectorNode,
+  options: CompactElementTreeOptions = {}
 ): CompactElementInspectorNode | null {
-  return compactNode(node);
+  return compactNode(node, options);
 }
 
 function compactNode(
-  node: ElementInspectorNode
+  node: ElementInspectorNode,
+  options: CompactElementTreeOptions
 ): CompactElementInspectorNode | null {
   if (shouldRemoveNode(node)) {
     return null;
   }
 
   const children = (node.children ?? [])
-    .map(compactNode)
+    .map((child) => compactNode(child, options))
     .filter((child): child is CompactElementInspectorNode => child != null);
   const output: CompactElementInspectorNode = {
     type: node.type,
   };
 
+  if (options.includeNodeId) {
+    output.id = node.id;
+  }
   if (node.displayName !== undefined) {
     output.displayName = node.displayName;
   }

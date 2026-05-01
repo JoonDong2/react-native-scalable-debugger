@@ -1,6 +1,7 @@
 import type { ElementInspectorLayout, JSONValue } from '../shared/protocol';
 
 export interface RenderableElementTreeNode {
+  id?: string;
   type: string;
   displayName?: string;
   text?: string;
@@ -11,26 +12,35 @@ export interface RenderableElementTreeNode {
   children?: RenderableElementTreeNode[];
 }
 
+export interface RenderElementTreeTextOptions {
+  includeNodeId?: boolean;
+}
+
 export function renderElementTreeText(
-  root: RenderableElementTreeNode | null | undefined
+  root: RenderableElementTreeNode | null | undefined,
+  options: RenderElementTreeTextOptions = {}
 ): string {
   if (!root) {
     return '';
   }
 
   const lines: string[] = [];
-  appendNode(lines, root, 0);
+  appendNode(lines, root, 0, options);
   return lines.join('\n');
 }
 
 function appendNode(
   lines: string[],
   node: RenderableElementTreeNode,
-  depth: number
+  depth: number,
+  options: RenderElementTreeTextOptions
 ): void {
   const label = node.displayName ?? node.type;
   const parts = [`${'  '.repeat(depth)}${label}`];
 
+  if (options.includeNodeId && node.id !== undefined) {
+    parts.push(`id=${node.id}`);
+  }
   if (node.text !== undefined) {
     parts.push(JSON.stringify(node.text));
   }
@@ -44,7 +54,7 @@ function appendNode(
   lines.push(parts.join(' '));
 
   for (const child of node.children ?? []) {
-    appendNode(lines, child, depth + 1);
+    appendNode(lines, child, depth + 1, options);
   }
 }
 
