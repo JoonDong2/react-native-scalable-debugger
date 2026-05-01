@@ -46,12 +46,16 @@ const {
 const {
   elementInspectorPlugin,
 } = require('react-native-scalable-debugger-element-inspector-plugin');
+const {
+  agentActionsPlugin,
+} = require('react-native-scalable-debugger-agent-actions-plugin');
 
 module.exports = {
   commands: [
     startCommand(
       networkPanelPlugin({ patchDebuggerFrontend }),
       elementInspectorPlugin(),
+      agentActionsPlugin(),
     ),
   ],
 };
@@ -91,6 +95,7 @@ Useful query parameters:
 - `compact=1`: reduce noise by removing zero-size nodes and flattening simple wrapper pairs
 - `plain=1`: return an indented `text/plain` tree instead of JSON
 - `layoutPrecision`: control decimal precision for layout values
+- `nodeId`: pass `1` to include node ids in compact/plain output, or `0` to remove node ids from JSON output
 
 The response is generated on demand, so it reflects the current UI tree when the request arrives.
 
@@ -153,6 +158,19 @@ This plugin is a good fit for MCP servers, test agents, and custom scripts that 
 
 The image is stored next to this README for documentation only. It is not listed in the package `files`, so it is not included in the published npm package.
 
+### `react-native-scalable-debugger-agent-actions-plugin`
+
+Use this plugin when an external agent needs to resolve current UI targets, move through React Navigation, press a matched view, or scroll a matched container.
+
+It is useful because:
+
+- it pairs with `/element-inspector` for live element-tree observation
+- it lets apps register a React Navigation `navigationRef` for agent-driven screen changes
+- it can resolve views by `id`, `testID`, `accessibilityLabel`, text, component name, or broad query
+- it can call enabled `onPress` handlers and common scroll methods from the app runtime
+
+This plugin performs JavaScript semantic actions. For native tap and swipe fidelity, combine element snapshots with host-side tools such as Maestro, adb, XCTest, or Appium.
+
 ### Creating your own plugin
 
 You can extend the debugger by implementing `ScalableDebuggerPlugin`.
@@ -212,5 +230,6 @@ The package still exposes the same core behavior as before:
 
 - `GET /apps` returns connected apps and their metadata
 - `GET /element-inspector` requests a fresh tree snapshot from the app runtime
+- `POST /agent-actions/resolve-view`, `/agent-actions/navigation/navigate`, `/agent-actions/press`, and `/agent-actions/scroll` ask the app runtime to resolve targets or perform semantic actions
 - `appId` remains the public selector for external requests
 - `deviceInfo.deviceId` stays available for tools that need the underlying device id
