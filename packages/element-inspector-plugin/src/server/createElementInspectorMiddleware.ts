@@ -5,7 +5,10 @@ import type {
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { ElementInspectorController } from './ElementInspectorController';
 import type { ElementInspectorLayout, ElementInspectorNode } from '../shared/protocol';
-import { compactElementTree } from './compactElementTree';
+import {
+  compactElementTree,
+  type CompactElementTreeLevel,
+} from './compactElementTree';
 import { renderElementTreeText } from './renderElementTreeText';
 import { stringifyJson } from '../shared/stringifyJson';
 
@@ -20,6 +23,7 @@ const SUPPORTED_QUERY_PARAMS = new Set([
 const SUPPORTED_QUERY_PARAMS_MESSAGE =
   'appId, start, compact, plain, layoutPrecision, and nodeId';
 const DEFAULT_LAYOUT_PRECISION = 1;
+type CompactMode = 0 | CompactElementTreeLevel;
 
 interface LayoutTreeNode {
   id?: string;
@@ -62,14 +66,14 @@ export function createElementInspectorMiddleware(
       return;
     }
 
-    const compact = parseModeFlag(requestUrl.searchParams.get('compact'));
+    const compact = parseCompactMode(requestUrl.searchParams.get('compact'));
     const plain = parseModeFlag(requestUrl.searchParams.get('plain'));
     const start = parseStartType(requestUrl.searchParams.get('start'));
     const layoutPrecision = parseLayoutPrecision(
       requestUrl.searchParams.get('layoutPrecision')
     );
     const nodeId = parseOptionalModeFlag(requestUrl.searchParams.get('nodeId'));
-    const includeNodeId = nodeId ?? (!compact && !plain);
+    const includeNodeId = nodeId ?? (compact === 2 || (!compact && !plain));
     const result = await controller.requestSnapshot(context, {
       appId: requestUrl.searchParams.get('appId') ?? undefined,
     });
@@ -81,7 +85,10 @@ export function createElementInspectorMiddleware(
           : result.snapshot.root;
       const snapshotRoot =
         compact && startedRoot
-          ? compactElementTree(startedRoot, { includeNodeId }) ?? undefined
+          ? compactElementTree(startedRoot, {
+              includeNodeId,
+              level: compact,
+            }) ?? undefined
           : startedRoot;
       normalizeLayoutPrecision(snapshotRoot, layoutPrecision);
       if (!includeNodeId) {
@@ -120,6 +127,13 @@ function getUnsupportedQueryParams(searchParams: URLSearchParams): string[] {
 
 function parseModeFlag(value: string | null): boolean {
   return value === '1';
+}
+
+function parseCompactMode(value: string | null): CompactMode {
+  if (value === '1' || value === '2') {
+    return Number.parseInt(value, 10) as CompactElementTreeLevel;
+  }
+  return 0;
 }
 
 function parseOptionalModeFlag(value: string | null): boolean | undefined {

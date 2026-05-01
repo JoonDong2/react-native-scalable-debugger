@@ -6,15 +6,24 @@ export interface RenderableElementTreeNode {
   displayName?: string;
   text?: string;
   layout?: ElementInspectorLayout;
-  props?: {
-    style?: JSONValue;
-  };
+  props?: Record<string, JSONValue>;
   children?: RenderableElementTreeNode[];
 }
 
 export interface RenderElementTreeTextOptions {
   includeNodeId?: boolean;
 }
+
+const TARGET_PROP_NAMES = new Set([
+  'testID',
+  'nativeID',
+  'accessibilityLabel',
+  'accessibilityHint',
+  'accessibilityRole',
+  'accessibilityState',
+  'accessibilityValue',
+  'disabled',
+]);
 
 export function renderElementTreeText(
   root: RenderableElementTreeNode | null | undefined,
@@ -50,6 +59,10 @@ function appendNode(
   if (node.props?.style !== undefined) {
     parts.push(`style=${renderCompactValue(node.props.style)}`);
   }
+  const renderedProps = renderProps(node.props);
+  if (renderedProps) {
+    parts.push(`props=${renderCompactValue(renderedProps)}`);
+  }
 
   lines.push(parts.join(' '));
 
@@ -66,6 +79,54 @@ function renderLayout(layout: ElementInspectorLayout): string {
 
 function formatNumber(value: number): string {
   return Number.isFinite(value) ? String(value) : 'null';
+}
+
+function renderProps(
+  props: Record<string, JSONValue> | undefined
+): Record<string, JSONValue> | null {
+  if (!props) {
+    return null;
+  }
+
+  const output: Record<string, JSONValue> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (TARGET_PROP_NAMES.has(key)) {
+      const renderedValue = renderPropValue(value);
+      if (renderedValue !== undefined) {
+        output[key] = renderedValue;
+      }
+    }
+  }
+
+  return Object.keys(output).length > 0 ? output : null;
+}
+
+function renderPropValue(value: JSONValue | undefined): JSONValue | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const items = value
+      .map(renderPropValue)
+      .filter((item): item is JSONValue => item !== undefined);
+    return items.length > 0 ? items : undefined;
+  }
+
+  const output: Record<string, JSONValue> = {};
+  for (const [key, childValue] of Object.entries(value)) {
+    const renderedValue = renderPropValue(childValue);
+    if (renderedValue !== undefined) {
+      output[key] = renderedValue;
+    }
+  }
+  return Object.keys(output).length > 0 ? output : undefined;
 }
 
 function renderCompactValue(value: JSONValue): string {

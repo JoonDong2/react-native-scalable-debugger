@@ -6,6 +6,24 @@ This plugin exposes host-side endpoints that let an external agent resolve targe
 
 It is designed to work with `@react-native-scalable-devtools/element-inspector-plugin`. Use `/element-inspector` for raw UI observation, then use this plugin for target resolution and semantic actions.
 
+## Maestro vs agent actions
+
+Maestro is a black-box device automation tool. It drives the built app through the platform UI layer and usually finds targets through the accessibility tree. That makes it useful when you need realistic user input, native gesture injection, OS permission dialogs, platform UI, or validation against a production-like binary.
+
+Maestro can still tap without `testID` or accessibility metadata when a target has visible text, when a stable nearby anchor can be used, or when you tap coordinates. The main limitation is stability: icon-only buttons, custom gesture surfaces, and views without text or accessibility metadata often require coordinate taps, and coordinate taps are device-dependent and brittle. Maestro also does not know the React Fiber tree, component props, or which nodes expose JavaScript handlers.
+
+The element-inspector plus agent-actions flow is different:
+
+1. Call `/element-inspector?appId=<appId>&plain=1&compact=2` to observe the current React Native tree.
+2. Let the agent choose an action candidate by `id`, `text`, `testID`, `nativeID`, `accessibilityLabel`, `type`, `displayName`, or layout.
+3. Call `/agent-actions/press`, `/agent-actions/scroll`, or `/agent-actions/navigation/*` with that target.
+
+This is faster and more deterministic for development-time agent workflows because the action runs inside the React Native runtime. It can act on a current element-inspector `id` even when the app did not define a stable `testID`, as long as the tree has not changed between observation and action. It can also navigate directly through a registered React Navigation ref instead of reproducing every tap.
+
+This combination can also control the app more precisely than a pure black-box flow. The agent can inspect the current React tree with node ids, layout bounds, text, and selected props, then target the exact Fiber node it chose instead of approximating the interaction through visible text, accessibility labels, or screen coordinates. That is useful for dense screens, repeated labels, nested touch targets, scroll containers, and agent loops that need to observe a state, choose one candidate, act, and observe again.
+
+The tradeoff is that these are semantic JavaScript actions, not native user gestures. `/agent-actions/press` finds the matched Fiber node and invokes the nearest enabled `onPress`; `/agent-actions/scroll` calls supported scroll methods. Complex `react-native-gesture-handler` gestures, drag interactions, native-only controls, OS dialogs, and anything outside the React Native tree may still need Maestro or another native automation tool. `compact=2` includes common gesture-handler surfaces in the observation output so an agent can reason about them, but action execution still depends on what the runtime exposes.
+
 ## Usage
 
 ### Register the plugin
@@ -54,10 +72,10 @@ curl -s "http://localhost:8081/apps"
 ### Observe the UI with element inspector
 
 ```sh
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=1&nodeId=1"
+curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=2"
 ```
 
-Raw element-tree observation belongs to the element inspector plugin. Compact and plain element-inspector output keeps node `id` values when `nodeId=1` is enabled, so an agent can choose an `id` from that compressed tree and pass it back to `/agent-actions/press` or `/agent-actions/scroll`.
+Raw element-tree observation belongs to the element inspector plugin. `compact=2` keeps touchable, scrollable, text, and image nodes with node `id` values by default, so an agent can choose an `id` from that compressed tree and pass it back to `/agent-actions/press` or `/agent-actions/scroll`.
 
 ### Resolve a view
 

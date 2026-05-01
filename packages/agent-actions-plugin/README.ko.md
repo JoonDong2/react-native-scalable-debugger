@@ -6,6 +6,24 @@
 
 `@react-native-scalable-devtools/element-inspector-plugin`과 함께 쓰도록 설계했습니다. Raw UI 관찰은 `/element-inspector`를 사용하고, 이 plugin은 target resolve와 semantic action에 사용하세요.
 
+## Maestro vs agent actions
+
+Maestro는 black-box device automation 도구입니다. 빌드된 앱을 platform UI layer에서 제어하고, target은 보통 accessibility tree를 통해 찾습니다. 실제 사용자 입력, native gesture injection, OS permission dialog, platform UI, production에 가까운 binary 검증이 필요할 때 유용합니다.
+
+Maestro는 target에 visible text가 있거나, 주변의 안정적인 anchor를 사용할 수 있거나, 좌표를 직접 탭할 수 있으면 `testID`나 accessibility metadata가 없어도 제어할 수 있습니다. 주요 제약은 안정성입니다. icon-only button, custom gesture surface, text나 accessibility metadata가 없는 view는 좌표 tap이 필요해지는 경우가 많고, 좌표 tap은 device-dependent하고 brittle합니다. Maestro는 React Fiber tree, component props, 어떤 node가 JavaScript handler를 노출하는지도 알 수 없습니다.
+
+element-inspector와 agent-actions 조합은 다르게 동작합니다.
+
+1. `/element-inspector?appId=<appId>&plain=1&compact=2`를 호출해 현재 React Native tree를 관찰합니다.
+2. agent가 `id`, `text`, `testID`, `nativeID`, `accessibilityLabel`, `type`, `displayName`, layout 중 하나를 기준으로 action 후보를 고릅니다.
+3. 해당 target으로 `/agent-actions/press`, `/agent-actions/scroll`, `/agent-actions/navigation/*`를 호출합니다.
+
+이 방식은 action이 React Native runtime 안에서 실행되므로 development-time agent workflow에서는 더 빠르고 deterministic할 수 있습니다. 앱이 안정적인 `testID`를 정의하지 않았더라도, 관찰과 action 사이에 tree가 바뀌지 않았다면 현재 element-inspector `id`로 action할 수 있습니다. React Navigation ref를 등록하면 모든 tap을 재현하지 않고 navigation을 직접 수행할 수도 있습니다.
+
+이 조합은 순수 black-box 흐름보다 더 정교하게 앱을 조작할 수도 있습니다. agent는 현재 React tree의 node id, layout bounds, text, 선별된 props를 확인한 뒤, visible text, accessibility label, 화면 좌표로 상호작용을 추정하는 대신 자신이 고른 정확한 Fiber node를 target으로 지정할 수 있습니다. 조밀한 화면, 반복되는 label, 중첩된 touch target, scroll container, 그리고 상태를 관찰한 뒤 후보 하나를 고르고 action 후 다시 관찰해야 하는 agent loop에서 특히 유용합니다.
+
+대신 이것은 native user gesture가 아니라 semantic JavaScript action입니다. `/agent-actions/press`는 매칭된 Fiber node를 찾고 가장 가까운 enabled `onPress`를 호출합니다. `/agent-actions/scroll`은 지원되는 scroll method를 호출합니다. 복잡한 `react-native-gesture-handler` gesture, drag interaction, native-only control, OS dialog, React Native tree 밖의 UI는 여전히 Maestro나 다른 native automation 도구가 필요할 수 있습니다. `compact=2`는 agent가 reasoning할 수 있도록 주요 gesture-handler surface를 관찰 output에 포함하지만, action 실행 가능 여부는 runtime이 무엇을 노출하는지에 달려 있습니다.
+
 ## 사용법
 
 ### plugin 등록
@@ -54,10 +72,10 @@ curl -s "http://localhost:8081/apps"
 ### Element inspector로 UI 관찰
 
 ```sh
-curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=1&nodeId=1"
+curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=2"
 ```
 
-Raw element-tree 관찰 책임은 element inspector plugin에 있습니다. Compact와 plain element-inspector output은 `nodeId=1`이 활성화되었을 때 node `id`를 유지하므로, agent는 압축된 tree에서 `id`를 고른 뒤 `/agent-actions/press` 또는 `/agent-actions/scroll`에 다시 전달할 수 있습니다.
+Raw element-tree 관찰 책임은 element inspector plugin에 있습니다. `compact=2`는 터치 가능, 스크롤 가능, text, image node와 node `id` 값을 기본으로 유지하므로, agent는 압축된 tree에서 `id`를 고른 뒤 `/agent-actions/press` 또는 `/agent-actions/scroll`에 다시 전달할 수 있습니다.
 
 ### View resolve
 
