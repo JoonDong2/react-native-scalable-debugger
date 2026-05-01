@@ -90,7 +90,7 @@ JSON response는 element node에 `displayName`을 포함합니다. Component가 
 
 Compact JSON과 plain text response는 `nodeId=1`이 전달되었을 때 node id를 유지하므로 다른 도구가 compact tree를 읽은 뒤 특정 node에 action을 수행할 수 있습니다. `compact=2`는 agent-action target 선택을 위한 mode이므로 node id를 기본으로 유지합니다. Wrapper node가 collapse되면 남는 child는 자신의 원래 `id`를 유지합니다.
 
-`compact=2`는 wrapper에 target prop이나 text가 없으면 같은 layout의 중복 scroll wrapper chain을 collapse합니다. `testID`, `nativeID`, `accessibilityLabel`, `accessibilityRole`, `disabled` 같은 target 정보가 있으면 agent가 target으로 선택할 수 있도록 해당 wrapper를 보존합니다.
+`compact=2`는 wrapper에 target prop이나 text가 없으면 같은 layout의 중복 scroll wrapper chain을 collapse합니다. Text와 image wrapper chain은 layout이 달라도 agent에 필요한 target 정보를 wrapper가 갖고 있지 않으면 더 적극적으로 collapse합니다. `testID`, `nativeID`, `accessibilityLabel`, `accessibilityRole`, `disabled` 같은 target 정보가 있으면 agent가 target으로 선택할 수 있도록 해당 wrapper를 보존합니다.
 
 ## 앱 식별자
 

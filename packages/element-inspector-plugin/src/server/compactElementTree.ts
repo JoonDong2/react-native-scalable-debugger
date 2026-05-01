@@ -261,11 +261,36 @@ function canBypassAgentActionWrapper(
   child: CompactElementInspectorNode
 ): boolean {
   return (
+    !hasAgentActionTargetInfo(parent) &&
+    (canBypassScrollableWrapper(parent, child) ||
+      canBypassTextWrapper(parent, child) ||
+      canBypassImageWrapper(parent, child))
+  );
+}
+
+function canBypassScrollableWrapper(
+  parent: CompactElementInspectorNode,
+  child: CompactElementInspectorNode
+): boolean {
+  return (
     isScrollableElement(parent) &&
     isScrollableElement(child) &&
-    hasSameLayout(parent.layout, child.layout) &&
-    !hasAgentActionTargetInfo(parent)
+    hasSameLayout(parent.layout, child.layout)
   );
+}
+
+function canBypassTextWrapper(
+  parent: CompactElementInspectorNode,
+  child: CompactElementInspectorNode
+): boolean {
+  return isTextElement(parent) && isTextElement(child);
+}
+
+function canBypassImageWrapper(
+  parent: CompactElementInspectorNode,
+  child: CompactElementInspectorNode
+): boolean {
+  return isImageElement(parent) && isImageElement(child);
 }
 
 function hasAgentActionTargetInfo(node: CompactElementInspectorNode): boolean {
@@ -295,7 +320,7 @@ function isScrollableElement(node: NamedElementNode): boolean {
   return hasNamePart(node, SCROLLABLE_NAME_PARTS);
 }
 
-function isTextElement(node: ElementInspectorNode): boolean {
+function isTextElement(node: NamedElementNode & { text?: string }): boolean {
   return (
     node.text !== undefined ||
     hasExactName(node, TEXT_ELEMENT_NAMES) ||
@@ -303,7 +328,7 @@ function isTextElement(node: ElementInspectorNode): boolean {
   );
 }
 
-function isImageElement(node: ElementInspectorNode): boolean {
+function isImageElement(node: NamedElementNode): boolean {
   return hasNamePart(node, ['image']);
 }
 
