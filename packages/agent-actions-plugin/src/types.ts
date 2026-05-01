@@ -1,0 +1,15 @@
+export type {
+  AgentActionDevice,
+  AgentActionErrorResponse,
+  AgentActionName,
+  AgentActionNodeSummary,
+  AgentActionPerformParams,
+  AgentActionResponse,
+  AgentActionResult,
+  AgentActionStatus,
+  AgentActionSuccessResponse,
+  AgentActionTarget,
+  AgentNavigationCommand,
+  AgentScrollCommand,
+  JSONValue,
+} from './shared/protocol';
