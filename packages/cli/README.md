@@ -79,6 +79,8 @@ The element inspector plugin exposes `GET /element-inspector`.
 curl -s "http://localhost:8081/element-inspector?appId=<appId>"
 ```
 
+The first request can be noticeably slower than later requests. The server may need to inject client-side plugin code, wait for the app runtime to attach, and measure the React tree before it can return the first snapshot. Keep this in mind when setting agent or test timeouts.
+
 Use `GET /apps` first, then pass the chosen `appId`. If only one app is connected, `appId` can be omitted. If more than one app is connected, the endpoint requires `appId` so the request reaches the right runtime.
 
 You can use it like this: the plugin reads the React tree, turns it into a layout tree, and returns a result that a test agent can evaluate directly.
