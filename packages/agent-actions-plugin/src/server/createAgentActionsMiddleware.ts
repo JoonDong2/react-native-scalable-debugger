@@ -9,7 +9,6 @@ import {
   AGENT_ACTIONS_NAVIGATE_ENDPOINT,
   AGENT_ACTIONS_NAVIGATION_STATE_ENDPOINT,
   AGENT_ACTIONS_PRESS_ENDPOINT,
-  AGENT_ACTIONS_RESOLVE_VIEW_ENDPOINT,
   AGENT_ACTIONS_SCROLL_ENDPOINT,
   type AgentActionTarget,
   type AgentNavigationCommand,
@@ -18,9 +17,7 @@ import {
 import type {
   AgentActionsController,
   ControllerActionResult,
-  ControllerSnapshotResult,
 } from './AgentActionsController';
-import { resolveElementTargets } from './resolveElementTarget';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
@@ -56,11 +53,6 @@ export function createAgentActionsMiddlewareEndpoints(
 ): MiddlewareEndpointContribution[] {
   return [
     createEndpoint(
-      AGENT_ACTIONS_RESOLVE_VIEW_ENDPOINT,
-      (request, response, context) =>
-        handleResolveView(controller, request, response, context)
-    ),
-    createEndpoint(
       AGENT_ACTIONS_NAVIGATION_STATE_ENDPOINT,
       (request, response, context) =>
         handleNavigationState(controller, request, response, context)
@@ -95,38 +87,6 @@ function createEndpoint(
       _next: MiddlewareNext
     ) => handler(request, response, context),
   };
-}
-
-async function handleResolveView(
-  controller: AgentActionsController,
-  request: IncomingMessage,
-  response: ServerResponse,
-  context: PluginEndpointContext
-): Promise<void> {
-  if (!allowMethod(request, response, 'POST')) {
-    return;
-  }
-
-  const body = await readJsonBody(request);
-  const target = normalizeTarget(body);
-  const result = await controller.requestSnapshot(context, {
-    appId: body.appId,
-    timeoutMs: body.timeoutMs,
-  });
-
-  if (!result.ok) {
-    writeControllerResult(response, result);
-    return;
-  }
-
-  const matches = resolveElementTargets(result.snapshot.root, target, 10).map(
-    ({ node, score }) => ({ score, node })
-  );
-  writeJson(response, matches.length > 0 ? 200 : 404, {
-    ok: matches.length > 0,
-    device: result.device,
-    matches,
-  });
 }
 
 async function handleNavigationState(
@@ -310,7 +270,7 @@ async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {
 
 function writeControllerResult(
   response: ServerResponse,
-  result: ControllerActionResult | ControllerSnapshotResult
+  result: ControllerActionResult
 ): void {
   if (result.ok) {
     writeJson(response, result.statusCode, withoutStatusCode(result));

@@ -2,9 +2,9 @@
 
 [한국어](README.ko.md)
 
-This plugin exposes host-side endpoints that let an external agent resolve targets in a running React Native app, navigate through React Navigation, and trigger simple UI actions such as pressing a matched view or scrolling a matched scroll container.
+This plugin exposes host-side endpoints that let an external agent navigate through React Navigation and trigger simple UI actions such as pressing a matched view or scrolling a matched scroll container in a running React Native app.
 
-It is designed to work with `@react-native-scalable-devtools/element-inspector-plugin`. Use `/element-inspector` for raw UI observation, then use this plugin for target resolution and semantic actions.
+It is designed to work with `@react-native-scalable-devtools/element-inspector-plugin`. Use `/element-inspector` for UI observation and target selection, then use this plugin for semantic actions.
 
 ## Maestro vs agent actions
 
@@ -75,25 +75,7 @@ curl -s "http://localhost:8081/apps"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=2"
 ```
 
-Raw element-tree observation belongs to the element inspector plugin. `compact=2` keeps touchable, scrollable, text, and image nodes with node `id` values by default, so an agent can choose an `id` from that compressed tree and pass it back to `/agent-actions/press` or `/agent-actions/scroll`.
-
-### Resolve a view
-
-```sh
-curl -s -X POST "http://localhost:8081/agent-actions/resolve-view" \
-  -H "Content-Type: application/json" \
-  -d '{"appId":"<appId>","query":"login button"}'
-```
-
-Targets can match `id`, `testID`, `nativeID`, `accessibilityLabel`, `text`, `type`, `displayName`, or a broad `query`.
-
-```json
-{
-  "target": {
-    "text": "Log in"
-  }
-}
-```
+Raw element-tree observation and target selection belong to the element inspector plugin. `compact=2` keeps touchable, scrollable, text, and image nodes with node `id` values by default, so an agent should choose an `id` from that compressed tree and pass it back to `/agent-actions/press` or `/agent-actions/scroll`.
 
 ### Navigate
 

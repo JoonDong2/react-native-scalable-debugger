@@ -233,6 +233,6 @@ plugin capabilities:
 
 - `GET /apps`는 연결된 앱과 metadata를 반환합니다.
 - `GET /element-inspector`는 앱 runtime에서 새 tree snapshot을 요청합니다.
-- `POST /agent-actions/resolve-view`, `/agent-actions/navigation/navigate`, `/agent-actions/press`, `/agent-actions/scroll`은 앱 runtime에 target resolve나 semantic action 수행을 요청합니다.
+- `POST /agent-actions/navigation/navigate`, `/agent-actions/press`, `/agent-actions/scroll`은 앱 runtime에 semantic action 수행을 요청합니다.
 - `appId`는 외부 요청의 public selector로 유지됩니다.
 - `deviceInfo.deviceId`는 device id가 필요한 도구를 위해 계속 제공됩니다.

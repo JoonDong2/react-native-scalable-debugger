@@ -1,5 +1,4 @@
 export const AGENT_ACTIONS_ENDPOINT = '/agent-actions';
-export const AGENT_ACTIONS_RESOLVE_VIEW_ENDPOINT = '/agent-actions/resolve-view';
 export const AGENT_ACTIONS_NAVIGATION_STATE_ENDPOINT =
   '/agent-actions/navigation/state';
 export const AGENT_ACTIONS_NAVIGATE_ENDPOINT =
@@ -10,9 +9,6 @@ export const AGENT_ACTIONS_SCROLL_ENDPOINT = '/agent-actions/scroll';
 
 export const AGENT_ACTIONS_PERFORM_METHOD = 'AgentActions.perform';
 export const AGENT_ACTIONS_RESULT_METHOD = 'AgentActions.result';
-
-export const ELEMENT_INSPECTOR_GET_TREE_METHOD = 'ElementInspector.getTree';
-export const ELEMENT_INSPECTOR_SNAPSHOT_METHOD = 'ElementInspector.snapshot';
 
 export type JSONValue =
   | null

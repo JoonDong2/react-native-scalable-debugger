@@ -2,9 +2,9 @@
 
 [English](README.md)
 
-이 plugin은 외부 agent가 실행 중인 React Native 앱에서 target을 resolve하고, React Navigation으로 화면을 이동하고, 특정 view를 press하거나 scroll container를 스크롤할 수 있도록 host-side endpoint를 제공합니다.
+이 plugin은 외부 agent가 실행 중인 React Native 앱에서 React Navigation으로 화면을 이동하고, 특정 view를 press하거나 scroll container를 스크롤할 수 있도록 host-side endpoint를 제공합니다.
 
-`@react-native-scalable-devtools/element-inspector-plugin`과 함께 쓰도록 설계했습니다. Raw UI 관찰은 `/element-inspector`를 사용하고, 이 plugin은 target resolve와 semantic action에 사용하세요.
+`@react-native-scalable-devtools/element-inspector-plugin`과 함께 쓰도록 설계했습니다. UI 관찰과 target 선택은 `/element-inspector`를 사용하고, 이 plugin은 semantic action에 사용하세요.
 
 ## Maestro vs agent actions
 
@@ -75,25 +75,7 @@ curl -s "http://localhost:8081/apps"
 curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=2"
 ```
 
-Raw element-tree 관찰 책임은 element inspector plugin에 있습니다. `compact=2`는 터치 가능, 스크롤 가능, text, image node와 node `id` 값을 기본으로 유지하므로, agent는 압축된 tree에서 `id`를 고른 뒤 `/agent-actions/press` 또는 `/agent-actions/scroll`에 다시 전달할 수 있습니다.
-
-### View resolve
-
-```sh
-curl -s -X POST "http://localhost:8081/agent-actions/resolve-view" \
-  -H "Content-Type: application/json" \
-  -d '{"appId":"<appId>","query":"login button"}'
-```
-
-Target은 `id`, `testID`, `nativeID`, `accessibilityLabel`, `text`, `type`, `displayName`, 넓은 의미의 `query`로 찾을 수 있습니다.
-
-```json
-{
-  "target": {
-    "text": "Log in"
-  }
-}
-```
+Raw element-tree 관찰과 target 선택 책임은 element inspector plugin에 있습니다. `compact=2`는 터치 가능, 스크롤 가능, text, image node와 node `id` 값을 기본으로 유지하므로, agent는 압축된 tree에서 `id`를 고른 뒤 `/agent-actions/press` 또는 `/agent-actions/scroll`에 다시 전달해야 합니다.
 
 ### Navigate
 

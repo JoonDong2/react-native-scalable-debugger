@@ -233,6 +233,6 @@ The package still exposes the same core behavior as before:
 
 - `GET /apps` returns connected apps and their metadata
 - `GET /element-inspector` requests a fresh tree snapshot from the app runtime
-- `POST /agent-actions/resolve-view`, `/agent-actions/navigation/navigate`, `/agent-actions/press`, and `/agent-actions/scroll` ask the app runtime to resolve targets or perform semantic actions
+- `POST /agent-actions/navigation/navigate`, `/agent-actions/press`, and `/agent-actions/scroll` ask the app runtime to perform semantic actions
 - `appId` remains the public selector for external requests
 - `deviceInfo.deviceId` stays available for tools that need the underlying device id
