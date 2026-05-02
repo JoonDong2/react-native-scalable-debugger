@@ -23,7 +23,6 @@ const MAX_BODY_BYTES = 1024 * 1024;
 
 interface JsonBody {
   appId?: string;
-  timeoutMs?: number;
   target?: AgentActionTarget;
   navigation?: AgentNavigationCommand;
   scroll?: AgentScrollCommand;
@@ -103,7 +102,6 @@ async function handleNavigationState(
   const result = await controller.requestRuntimeAction(context, {
     action: 'getNavigationState',
     appId: getStringParam(url, 'appId'),
-    timeoutMs: getNumberParam(url, 'timeoutMs'),
   });
   writeControllerResult(response, result);
 }
@@ -123,7 +121,6 @@ async function handleNavigate(
   const result = await controller.requestRuntimeAction(context, {
     action: 'navigate',
     appId: body.appId,
-    timeoutMs: body.timeoutMs,
     navigation,
   });
   writeControllerResult(response, result);
@@ -143,7 +140,6 @@ async function handleBack(
   const result = await controller.requestRuntimeAction(context, {
     action: 'goBack',
     appId: body.appId,
-    timeoutMs: body.timeoutMs,
   });
   writeControllerResult(response, result);
 }
@@ -162,7 +158,6 @@ async function handlePress(
   const result = await controller.requestRuntimeAction(context, {
     action: 'press',
     appId: body.appId,
-    timeoutMs: body.timeoutMs,
     target: normalizeTarget(body),
   });
   writeControllerResult(response, result);
@@ -182,7 +177,6 @@ async function handleScroll(
   const result = await controller.requestRuntimeAction(context, {
     action: 'scroll',
     appId: body.appId,
-    timeoutMs: body.timeoutMs,
     target: normalizeTarget(body),
     scroll: normalizeScroll(body),
   });
@@ -292,15 +286,6 @@ function getRequestUrl(request: IncomingMessage): URL {
 
 function getStringParam(url: URL, name: string): string | undefined {
   return url.searchParams.get(name) ?? undefined;
-}
-
-function getNumberParam(url: URL, name: string): number | undefined {
-  const value = url.searchParams.get(name);
-  if (value == null || value.trim() === '') {
-    return undefined;
-  }
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function writeJson(

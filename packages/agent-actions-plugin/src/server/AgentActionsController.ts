@@ -14,10 +14,6 @@ import {
 } from '../shared/protocol';
 import { createRequestId } from './createRequestId';
 
-const DEFAULT_TIMEOUT_MS = 5000;
-const MIN_TIMEOUT_MS = 250;
-const MAX_TIMEOUT_MS = 60000;
-
 interface AppProxyMessage {
   method?: string;
   params?: unknown;
@@ -25,7 +21,6 @@ interface AppProxyMessage {
 
 export interface RequestOptions {
   appId?: string;
-  timeoutMs?: number;
 }
 
 export interface RuntimeActionOptions extends RequestOptions {
@@ -50,7 +45,6 @@ export type ControllerActionResult =
 interface PendingActionRequest {
   device: AgentActionDevice;
   resolve: (result: ControllerActionResult) => void;
-  timer: ReturnType<typeof setTimeout>;
 }
 
 export class AgentActionsController {
@@ -104,24 +98,11 @@ export class AgentActionsController {
       navigation: options.navigation,
       scroll: options.scroll,
     };
-    const timeoutMs = normalizeTimeout(options.timeoutMs);
 
     return new Promise<ControllerActionResult>((resolve) => {
-      const timer = setTimeout(() => {
-        this.#pendingActions.delete(requestId);
-        resolve({
-          ok: false,
-          statusCode: 504,
-          error: 'action_timeout',
-          message: `Timed out waiting for agent action "${options.action}" after ${timeoutMs}ms.`,
-          devices: this.listDevices(context),
-        });
-      }, timeoutMs);
-
       this.#pendingActions.set(requestId, {
         device: selection.device,
         resolve,
-        timer,
       });
 
       const sent = context.socketContext.sendToAppById(selection.device.appId, {
@@ -130,7 +111,6 @@ export class AgentActionsController {
       });
 
       if (!sent) {
-        clearTimeout(timer);
         this.#pendingActions.delete(requestId);
         resolve({
           ok: false,
@@ -161,7 +141,6 @@ export class AgentActionsController {
       return;
     }
 
-    clearTimeout(pending.timer);
     this.#pendingActions.delete(result.requestId);
     pending.resolve({
       ok: true,
@@ -223,13 +202,6 @@ export class AgentActionsController {
     }
     return this.#context;
   }
-}
-
-function normalizeTimeout(value: number | undefined): number {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_TIMEOUT_MS;
-  }
-  return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.floor(value!)));
 }
 
 function toAgentActionDevice(target: {

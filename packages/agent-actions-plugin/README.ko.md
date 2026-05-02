@@ -101,6 +101,45 @@ curl -s -X POST "http://localhost:8081/agent-actions/navigation/back" \
 curl -s "http://localhost:8081/agent-actions/navigation/state?appId=<appId>"
 ```
 
+이 endpoint는 앱 runtime에서 등록된 React Navigation ref를 읽고, `value` 안에 `isReady`, sanitize된 root navigation `state`, `currentRoute`를 담은 result를 반환합니다. 별도의 화면 요약 field를 만들지 않으므로 agent는 `result.value.state` 안의 React Navigation 고유 `index`와 `routes` 구조를 읽어서 판단하면 됩니다.
+
+응답 예시:
+
+```json
+{
+  "ok": true,
+  "device": {
+    "appId": "app-1",
+    "name": "iPhone 15",
+    "connected": true,
+    "connectedAt": 1710000000000,
+    "hasDebugger": true
+  },
+  "result": {
+    "requestId": "req-1",
+    "requestedAt": 1710000000100,
+    "completedAt": 1710000000120,
+    "action": "getNavigationState",
+    "status": "ok",
+    "value": {
+      "isReady": true,
+      "state": {
+        "index": 1,
+        "routeNames": ["Home", "Settings"],
+        "routes": [
+          { "key": "Home-a1", "name": "Home" },
+          { "key": "Settings-b2", "name": "Settings" }
+        ]
+      },
+      "currentRoute": {
+        "key": "Settings-b2",
+        "name": "Settings"
+      }
+    }
+  }
+}
+```
+
 ### Press
 
 ```sh

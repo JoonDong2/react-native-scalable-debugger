@@ -101,6 +101,45 @@ curl -s -X POST "http://localhost:8081/agent-actions/navigation/back" \
 curl -s "http://localhost:8081/agent-actions/navigation/state?appId=<appId>"
 ```
 
+The endpoint asks the app runtime for the registered React Navigation ref and returns a result whose `value` contains `isReady`, the sanitized root navigation `state`, and `currentRoute`. It does not add derived screen summaries; agents can read React Navigation's own `index` and `routes` structure from `result.value.state`.
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "device": {
+    "appId": "app-1",
+    "name": "iPhone 15",
+    "connected": true,
+    "connectedAt": 1710000000000,
+    "hasDebugger": true
+  },
+  "result": {
+    "requestId": "req-1",
+    "requestedAt": 1710000000100,
+    "completedAt": 1710000000120,
+    "action": "getNavigationState",
+    "status": "ok",
+    "value": {
+      "isReady": true,
+      "state": {
+        "index": 1,
+        "routeNames": ["Home", "Settings"],
+        "routes": [
+          { "key": "Home-a1", "name": "Home" },
+          { "key": "Settings-b2", "name": "Settings" }
+        ]
+      },
+      "currentRoute": {
+        "key": "Settings-b2",
+        "name": "Settings"
+      }
+    }
+  }
+}
+```
+
 ### Press
 
 ```sh
