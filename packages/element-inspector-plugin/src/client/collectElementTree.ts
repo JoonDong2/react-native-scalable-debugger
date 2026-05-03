@@ -158,14 +158,18 @@ async function collectSiblings(
 
     item.parentChildren.push(node);
     createdNodes.push(node);
-    layoutTasks.push(
-      measureLayout(node.layoutTarget ?? null).then((layout) => {
-        if (layout) {
-          node.layout = layout;
-        }
-        delete node.layoutTarget;
-      })
-    );
+    if (node.layoutTarget) {
+      const task = measureLayout(node.layoutTarget);
+      if (task) {
+        layoutTasks.push(
+          task.then((layout) => {
+            if (layout) {
+              node.layout = layout;
+            }
+          })
+        );
+      }
+    }
 
     const childFibers = getSiblingFibers(item.fiber.child ?? null);
     if (childFibers.length > 0) {
@@ -264,8 +268,10 @@ function fiberToNode(
 
 function getSiblingFibers(fiber: ReactFiberLike | null): ReactFiberLike[] {
   const fibers: ReactFiberLike[] = [];
+  const seen = new Set<ReactFiberLike>();
   let cursor: ReactFiberLike | null | undefined = fiber;
-  while (cursor) {
+  while (cursor && !seen.has(cursor)) {
+    seen.add(cursor);
     fibers.push(cursor);
     cursor = cursor.sibling;
   }
@@ -305,13 +311,15 @@ function findInspectableHostFiber(
     }
 
     visited.add(current);
-    if (isHostFiber(current)) {
+    if (current.tag === 5) {
       return current;
     }
 
     const children: ReactFiberLike[] = [];
+    const seenSiblings = new Set<ReactFiberLike>();
     let child = current.child ?? null;
-    while (child && !visited.has(child)) {
+    while (child && !visited.has(child) && !seenSiblings.has(child)) {
+      seenSiblings.add(child);
       children.push(child);
       child = child.sibling ?? null;
     }
@@ -324,11 +332,11 @@ function findInspectableHostFiber(
   return null;
 }
 
-async function measureLayout(
-  fiber: ReactFiberLike | null
-): Promise<ElementInspectorNode['layout'] | undefined> {
-  const measureTarget = getMeasurableHostInstance(fiber?.stateNode);
-  const legacyReactTag = measureTarget ? null : getReactTag(fiber?.stateNode);
+function measureLayout(
+  fiber: ReactFiberLike
+): Promise<ElementInspectorNode['layout'] | undefined> | undefined {
+  const measureTarget = getMeasurableHostInstance(fiber.stateNode);
+  const legacyReactTag = measureTarget ? null : getReactTag(fiber.stateNode);
   const legacyMeasure = legacyReactTag == null ? null : getLegacyMeasure();
 
   if (!measureTarget && (!legacyMeasure || legacyReactTag == null)) {
