@@ -33,8 +33,6 @@ function parseChunk(value: unknown): { requestId: string, chunkIndex: number, to
   return v;
 }
 
-const SNAPSHOT_REQUEST_TIMEOUT_MS = 30000;
-
 export interface SnapshotRequestOptions {
   appId?: string;
 }
@@ -57,7 +55,6 @@ export type SnapshotListener = (
 
 interface PendingSnapshotRequest {
   device: ElementInspectorDevice;
-  timeout: ReturnType<typeof setTimeout>;
   resolve: (result: ControllerSnapshotResult) => void;
 }
 
@@ -111,21 +108,8 @@ export class ElementInspectorController {
     };
 
     return new Promise<ControllerSnapshotResult>((resolve) => {
-      const timeout = setTimeout(() => {
-        this.#pendingRequests.delete(requestId);
-        chunkBuffers.delete(requestId);
-        resolve({
-          ok: false,
-          statusCode: 504,
-          error: 'snapshot_timeout',
-          message: `Element inspector snapshot request timed out after ${SNAPSHOT_REQUEST_TIMEOUT_MS}ms.`,
-          devices: this.listDevices(context),
-        });
-      }, SNAPSHOT_REQUEST_TIMEOUT_MS);
-
       this.#pendingRequests.set(requestId, {
         device: selection.device,
-        timeout,
         resolve,
       });
 
@@ -137,7 +121,6 @@ export class ElementInspectorController {
         });
       } catch (error) {
         this.#pendingRequests.delete(requestId);
-        clearTimeout(timeout);
         resolve({
           ok: false,
           statusCode: 500,
@@ -153,7 +136,6 @@ export class ElementInspectorController {
 
       if (!sent) {
         this.#pendingRequests.delete(requestId);
-        clearTimeout(timeout);
         resolve({
           ok: false,
           statusCode: 503,
@@ -208,9 +190,7 @@ export class ElementInspectorController {
     if (!pending || !isSameDevice(pending.device, target)) {
       return;
     }
-
     this.#pendingRequests.delete(snapshot.requestId);
-    clearTimeout(pending.timeout);
 
     const result: ControllerSuccessResult = {
       ok: true,

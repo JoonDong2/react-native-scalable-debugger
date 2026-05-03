@@ -15,7 +15,6 @@ const MAX_ARRAY_ITEMS = 40;
 const MAX_STRING_LENGTH = 300;
 const MAX_PROP_DEPTH = 2;
 const MAX_STYLE_DEPTH = 8;
-const MEASURE_LAYOUT_TIMEOUT_MS = 500;
 const IGNORED_ELEMENT_NAMES = new Set([
   'DebuggingOverlay',
   'LogBoxStateSubscription',
@@ -179,10 +178,7 @@ async function collectSiblings(
     }
   }
 
-  await Promise.race([
-    Promise.all(layoutTasks),
-    new Promise<void>((resolve) => setTimeout(resolve, MEASURE_LAYOUT_TIMEOUT_MS))
-  ]);
+  await Promise.all(layoutTasks);
 
   for (const node of createdNodes) {
     delete node.layoutTarget;
