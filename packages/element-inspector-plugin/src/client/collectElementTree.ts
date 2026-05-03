@@ -15,7 +15,6 @@ const MAX_ARRAY_ITEMS = 40;
 const MAX_STRING_LENGTH = 300;
 const MAX_PROP_DEPTH = 2;
 const MAX_STYLE_DEPTH = 8;
-const MEASURE_LAYOUT_TIMEOUT_MS = 500;
 const IGNORED_ELEMENT_NAMES = new Set([
   'DebuggingOverlay',
   'LogBoxStateSubscription',
@@ -158,18 +157,14 @@ async function collectSiblings(
 
     item.parentChildren.push(node);
     createdNodes.push(node);
-    if (node.layoutTarget) {
-      const task = measureLayout(node.layoutTarget);
-      if (task) {
-        layoutTasks.push(
-          task.then((layout) => {
-            if (layout) {
-              node.layout = layout;
-            }
-          })
-        );
-      }
-    }
+    layoutTasks.push(
+      measureLayout(node.layoutTarget ?? null).then((layout) => {
+        if (layout) {
+          node.layout = layout;
+        }
+        delete node.layoutTarget;
+      })
+    );
 
     const childFibers = getSiblingFibers(item.fiber.child ?? null);
     if (childFibers.length > 0) {
@@ -179,13 +174,9 @@ async function collectSiblings(
     }
   }
 
-  await Promise.race([
-    Promise.all(layoutTasks),
-    new Promise<void>((resolve) => setTimeout(resolve, MEASURE_LAYOUT_TIMEOUT_MS))
-  ]);
+  await Promise.all(layoutTasks);
 
   for (const node of createdNodes) {
-    delete node.layoutTarget;
     if (node.children && node.children.length === 0) {
       delete node.children;
     }
@@ -268,10 +259,8 @@ function fiberToNode(
 
 function getSiblingFibers(fiber: ReactFiberLike | null): ReactFiberLike[] {
   const fibers: ReactFiberLike[] = [];
-  const seen = new Set<ReactFiberLike>();
   let cursor: ReactFiberLike | null | undefined = fiber;
-  while (cursor && !seen.has(cursor)) {
-    seen.add(cursor);
+  while (cursor) {
     fibers.push(cursor);
     cursor = cursor.sibling;
   }
@@ -311,15 +300,13 @@ function findInspectableHostFiber(
     }
 
     visited.add(current);
-    if (current.tag === 5) {
+    if (isHostFiber(current)) {
       return current;
     }
 
     const children: ReactFiberLike[] = [];
-    const seenSiblings = new Set<ReactFiberLike>();
     let child = current.child ?? null;
-    while (child && !visited.has(child) && !seenSiblings.has(child)) {
-      seenSiblings.add(child);
+    while (child && !visited.has(child)) {
       children.push(child);
       child = child.sibling ?? null;
     }
@@ -332,11 +319,11 @@ function findInspectableHostFiber(
   return null;
 }
 
-function measureLayout(
-  fiber: ReactFiberLike
-): Promise<ElementInspectorNode['layout'] | undefined> | undefined {
-  const measureTarget = getMeasurableHostInstance(fiber.stateNode);
-  const legacyReactTag = measureTarget ? null : getReactTag(fiber.stateNode);
+async function measureLayout(
+  fiber: ReactFiberLike | null
+): Promise<ElementInspectorNode['layout'] | undefined> {
+  const measureTarget = getMeasurableHostInstance(fiber?.stateNode);
+  const legacyReactTag = measureTarget ? null : getReactTag(fiber?.stateNode);
   const legacyMeasure = legacyReactTag == null ? null : getLegacyMeasure();
 
   if (!measureTarget && (!legacyMeasure || legacyReactTag == null)) {
@@ -344,15 +331,6 @@ function measureLayout(
   }
 
   return new Promise((resolve) => {
-    let settled = false;
-    const settle = (layout: ElementInspectorNode['layout'] | undefined) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      resolve(layout);
-    };
-
     try {
       const handleMeasure: MeasureCallback = (
         x,
@@ -362,7 +340,7 @@ function measureLayout(
         pageX,
         pageY
       ) => {
-        settle({
+        resolve({
           x: Number.isFinite(pageX) ? pageX : x,
           y: Number.isFinite(pageY) ? pageY : y,
           width,
@@ -376,7 +354,7 @@ function measureLayout(
         legacyMeasure(legacyReactTag, handleMeasure);
       }
     } catch {
-      settle(undefined);
+      resolve(undefined);
     }
   });
 }

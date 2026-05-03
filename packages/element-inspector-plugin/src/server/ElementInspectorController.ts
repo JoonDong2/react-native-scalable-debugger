@@ -15,8 +15,6 @@ interface AppProxyMessage {
   params?: unknown;
 }
 
-const SNAPSHOT_REQUEST_TIMEOUT_MS = 30000;
-
 export interface SnapshotRequestOptions {
   appId?: string;
 }
@@ -39,7 +37,6 @@ export type SnapshotListener = (
 
 interface PendingSnapshotRequest {
   device: ElementInspectorDevice;
-  timeout: ReturnType<typeof setTimeout>;
   resolve: (result: ControllerSnapshotResult) => void;
 }
 
@@ -93,48 +90,18 @@ export class ElementInspectorController {
     };
 
     return new Promise<ControllerSnapshotResult>((resolve) => {
-      const timeout = setTimeout(() => {
-        this.#pendingRequests.delete(requestId);
-        resolve({
-          ok: false,
-          statusCode: 504,
-          error: 'snapshot_timeout',
-          message: `Element inspector snapshot request timed out after ${SNAPSHOT_REQUEST_TIMEOUT_MS}ms.`,
-          devices: this.listDevices(context),
-        });
-      }, SNAPSHOT_REQUEST_TIMEOUT_MS);
-
       this.#pendingRequests.set(requestId, {
         device: selection.device,
-        timeout,
         resolve,
       });
 
-      let sent = false;
-      try {
-        sent = context.socketContext.sendToAppById(selection.device.appId, {
-          method: ELEMENT_INSPECTOR_GET_TREE_METHOD,
-          params,
-        });
-      } catch (error) {
-        this.#pendingRequests.delete(requestId);
-        clearTimeout(timeout);
-        resolve({
-          ok: false,
-          statusCode: 500,
-          error: 'request_send_failed',
-          message:
-            error instanceof Error
-              ? error.message
-              : `Failed to send element inspector request: ${String(error)}`,
-          devices: this.listDevices(context),
-        });
-        return;
-      }
+      const sent = context.socketContext.sendToAppById(selection.device.appId, {
+        method: ELEMENT_INSPECTOR_GET_TREE_METHOD,
+        params,
+      });
 
       if (!sent) {
         this.#pendingRequests.delete(requestId);
-        clearTimeout(timeout);
         resolve({
           ok: false,
           statusCode: 503,
@@ -172,7 +139,6 @@ export class ElementInspectorController {
     }
 
     this.#pendingRequests.delete(snapshot.requestId);
-    clearTimeout(pending.timeout);
 
     const result: ControllerSuccessResult = {
       ok: true,
