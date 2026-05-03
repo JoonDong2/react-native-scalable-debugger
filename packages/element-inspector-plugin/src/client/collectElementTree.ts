@@ -15,6 +15,7 @@ const MAX_ARRAY_ITEMS = 40;
 const MAX_STRING_LENGTH = 300;
 const MAX_PROP_DEPTH = 2;
 const MAX_STYLE_DEPTH = 8;
+const MEASURE_LAYOUT_TIMEOUT_MS = 500;
 const IGNORED_ELEMENT_NAMES = new Set([
   'DebuggingOverlay',
   'LogBoxStateSubscription',
@@ -331,6 +332,19 @@ async function measureLayout(
   }
 
   return new Promise((resolve) => {
+    let settled = false;
+    const settle = (layout: ElementInspectorNode['layout'] | undefined) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      resolve(layout);
+    };
+    const timeout = setTimeout(() => {
+      settle(undefined);
+    }, MEASURE_LAYOUT_TIMEOUT_MS);
+
     try {
       const handleMeasure: MeasureCallback = (
         x,
@@ -340,7 +354,7 @@ async function measureLayout(
         pageX,
         pageY
       ) => {
-        resolve({
+        settle({
           x: Number.isFinite(pageX) ? pageX : x,
           y: Number.isFinite(pageY) ? pageY : y,
           width,
@@ -354,7 +368,7 @@ async function measureLayout(
         legacyMeasure(legacyReactTag, handleMeasure);
       }
     } catch {
-      resolve(undefined);
+      settle(undefined);
     }
   });
 }
