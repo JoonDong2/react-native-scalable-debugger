@@ -15,7 +15,7 @@ It is built around:
 - a core debugger server that connects to React Native apps
 - a public `appId` selector for routing requests to the right app
 - a plugin system for adding HTTP endpoints, WebSocket endpoints, and debugger hooks
-- focused plugins for network inspection and live element-tree inspection
+- focused plugins for network inspection, live element-tree inspection, React Navigation control, and semantic UI actions
 
 If you only want a quick summary: the core package starts the server, and the plugins add specialized debugging features on top of it.
 
@@ -46,6 +46,9 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
+  reactNavigationPlugin,
+} = require('@react-native-scalable-devtools/react-navigation-plugin');
+const {
   agentActionsPlugin,
 } = require('@react-native-scalable-devtools/agent-actions-plugin');
 
@@ -54,6 +57,7 @@ module.exports = {
     startCommand(
       networkPanelPlugin({ patchDebuggerFrontend }),
       elementInspectorPlugin(),
+      reactNavigationPlugin(),
       agentActionsPlugin(),
     ),
   ],
@@ -64,7 +68,8 @@ Useful endpoints:
 
 - `GET /apps` from `@react-native-scalable-devtools/cli` to discover connected apps, their `appId` values, and the device identifier the host OS recognizes for each app
 - `GET /element-inspector` from `@react-native-scalable-devtools/element-inspector-plugin` to fetch the live element tree for a connected app
-- `GET /agent-actions/navigation/state` and `POST /agent-actions/*` from `@react-native-scalable-devtools/agent-actions-plugin` to let an external agent read React Navigation state, resolve targets, navigate, press, and scroll a connected app
+- `GET /react-navigation/state`, `POST /react-navigation/navigate`, and `POST /react-navigation/back` from `@react-native-scalable-devtools/react-navigation-plugin` to let an external agent read registered React Navigation state and move through screens
+- `POST /agent-actions/press` and `POST /agent-actions/scroll` from `@react-native-scalable-devtools/agent-actions-plugin` to let an external agent press a matched view or scroll a matched container
 
 If only one app is connected, `appId` can usually be omitted. If more than one app is connected, pass `appId` so the request reaches the intended runtime.
 
@@ -75,7 +80,8 @@ The `deviceInfo.deviceId` field from `GET /apps` is useful when you want to targ
 - `@react-native-scalable-devtools/cli`: the core debugger server. It provides `startCommand`, the AppProxy that tracks connected apps, and the plugin API for custom endpoints and debugger hooks. See [package README](packages/cli/README.md).
 - `@react-native-scalable-devtools/network-plugin`: the network inspection plugin. Use it when you need better visibility into HTTP requests and WebSocket traffic than the stock React Native network panel provides. It also patches the debugger frontend so socket traffic can be shown separately from Fetch/XHR traffic. See [package README](packages/network-plugin/README.md).
 - `@react-native-scalable-devtools/element-inspector-plugin`: the live element-tree inspection plugin. Use it when you want to inspect the current React Native UI hierarchy from the development host, compact the tree, render it as plain text for an agent or script, or capture a snapshot after driving the app into a specific state with a host-side tool such as Maestro CLI. See [package README](packages/element-inspector-plugin/README.md).
-- `@react-native-scalable-devtools/agent-actions-plugin`: the agent action plugin. Use it when an external LLM agent needs to read registered React Navigation state, resolve current UI targets, navigate through React Navigation with a registered `navigationRef`, press a matched view, or scroll a matched container. See [package README](packages/agent-actions-plugin/README.md).
+- `@react-native-scalable-devtools/react-navigation-plugin`: the React Navigation plugin. Use it when an external LLM agent needs to read registered React Navigation state, navigate through React Navigation with a registered `navigationRef`, or go back. See [package README](packages/react-navigation-plugin/README.md).
+- `@react-native-scalable-devtools/agent-actions-plugin`: the agent action plugin. Use it when an external LLM agent needs to resolve current UI targets, press a matched view, or scroll a matched container. See [package README](packages/agent-actions-plugin/README.md).
 
 ## Package Docs
 
@@ -84,4 +90,5 @@ Each package has its own README with more detail:
 - [Core package README](packages/cli/README.md)
 - [Network plugin README](packages/network-plugin/README.md)
 - [Element inspector plugin README](packages/element-inspector-plugin/README.md)
+- [React Navigation plugin README](packages/react-navigation-plugin/README.md)
 - [Agent actions plugin README](packages/agent-actions-plugin/README.md)

@@ -2,16 +2,17 @@
 
 [English](publishing.md)
 
-이 repository는 세 npm package를 배포합니다.
+이 repository는 다섯 npm package를 배포합니다.
 
 - `@react-native-scalable-devtools/cli`
 - `@react-native-scalable-devtools/network-plugin`
 - `@react-native-scalable-devtools/element-inspector-plugin`
+- `@react-native-scalable-devtools/react-navigation-plugin`
 - `@react-native-scalable-devtools/agent-actions-plugin`
 
 배포는 `main` branch push 시 `.github/workflows/publish.yml`에서 실행됩니다. Workflow는 repository의 `NPM_TOKEN` secret을 `NODE_AUTH_TOKEN`으로 사용하고, npm provenance를 활성화해 publish합니다.
 
-Plugin package는 의도적으로 unscoped package name으로 배포하므로 npm organization이나 scope가 필요하지 않습니다. `NPM_TOKEN`에는 배포할 각 package name에 대한 publish 권한이 필요합니다.
+Package는 `@react-native-scalable-devtools` npm scope 아래에 배포됩니다. `NPM_TOKEN`에는 배포할 각 package name에 대한 publish 권한이 필요합니다.
 
 ## Version 정책
 
@@ -26,13 +27,16 @@ Package directory 변경만 package publish를 트리거합니다. Publish helpe
 - `packages/cli`
 - `packages/network-plugin`
 - `packages/element-inspector-plugin`
+- `packages/react-navigation-plugin`
+- `packages/agent-actions-plugin`
 
 Root-only 변경은 어떤 package도 배포하지 않습니다. Core와 plugin package가 함께 변경되면 항상 다음 순서로 배포합니다.
 
 1. `@react-native-scalable-devtools/cli`
 2. `@react-native-scalable-devtools/network-plugin`
 3. `@react-native-scalable-devtools/element-inspector-plugin`
-4. `@react-native-scalable-devtools/agent-actions-plugin`
+4. `@react-native-scalable-devtools/react-navigation-plugin`
+5. `@react-native-scalable-devtools/agent-actions-plugin`
 
 ## Local Dry Run
 
@@ -63,6 +67,6 @@ yarn install --frozen-lockfile
 yarn typecheck
 yarn build
 yarn test
-for dir in packages/cli packages/network-plugin packages/element-inspector-plugin packages/agent-actions-plugin; do (cd "$dir" && npm pack --dry-run); done
+for dir in packages/cli packages/network-plugin packages/element-inspector-plugin packages/react-navigation-plugin packages/agent-actions-plugin; do (cd "$dir" && npm pack --dry-run); done
 node scripts/publish-changed-packages.mjs --base HEAD~1 --head HEAD --dry-run
 ```

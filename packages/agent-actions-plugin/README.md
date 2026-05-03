@@ -2,9 +2,11 @@
 
 [한국어](README.ko.md)
 
-This plugin exposes host-side endpoints that let an external agent navigate through React Navigation and trigger simple UI actions such as pressing a matched view or scrolling a matched scroll container in a running React Native app.
+This plugin exposes host-side endpoints that let an external agent trigger simple UI actions such as pressing a matched view or scrolling a matched scroll container in a running React Native app.
 
-It is designed to work with `@react-native-scalable-devtools/element-inspector-plugin`. Use `/element-inspector` for UI observation and target selection, then use this plugin for semantic actions.
+It is designed to work with `@react-native-scalable-devtools/element-inspector-plugin`. Use `/element-inspector` for UI observation and target selection, then use this plugin for semantic press and scroll actions.
+
+React Navigation support lives in `@react-native-scalable-devtools/react-navigation-plugin`. Use that package when an agent needs to register a React Navigation ref, read navigation state, navigate, or go back.
 
 ## Maestro vs agent actions
 
@@ -16,9 +18,9 @@ The element-inspector plus agent-actions flow is different:
 
 1. Call `/element-inspector?appId=<appId>&plain=1&compact=2` to observe the current React Native tree.
 2. Let the agent choose an action candidate by `id`, `text`, `testID`, `nativeID`, `accessibilityLabel`, `type`, `displayName`, or layout.
-3. Call `/agent-actions/press`, `/agent-actions/scroll`, or `/agent-actions/navigation/*` with that target.
+3. Call `/agent-actions/press` or `/agent-actions/scroll` with that target.
 
-This is faster and more deterministic for development-time agent workflows because the action runs inside the React Native runtime. It can act on a current element-inspector `id` even when the app did not define a stable `testID`, as long as the tree has not changed between observation and action. It can also navigate directly through a registered React Navigation ref instead of reproducing every tap.
+This is faster and more deterministic for development-time agent workflows because the action runs inside the React Native runtime. It can act on a current element-inspector `id` even when the app did not define a stable `testID`, as long as the tree has not changed between observation and action.
 
 This combination can also control the app more precisely than a pure black-box flow. The agent can inspect the current React tree with node ids, layout bounds, text, and selected props, then target the exact Fiber node it chose instead of approximating the interaction through visible text, accessibility labels, or screen coordinates. That is useful for dense screens, repeated labels, nested touch targets, scroll containers, and agent loops that need to observe a state, choose one candidate, act, and observe again.
 
@@ -42,24 +44,7 @@ module.exports = {
 };
 ```
 
-### Register a React Navigation ref
-
-The plugin cannot discover your navigation container by itself. Create the navigation ref in the app and register it with the client entry.
-
-```ts
-import { createNavigationContainerRef } from '@react-navigation/native';
-import { registerNavigationRef } from '@react-native-scalable-devtools/agent-actions-plugin/client';
-
-export const navigationRef = createNavigationContainerRef();
-
-registerNavigationRef(navigationRef);
-```
-
-```tsx
-<NavigationContainer ref={navigationRef}>
-  {/* screens */}
-</NavigationContainer>
-```
+If the same workflow also needs React Navigation control, register `@react-native-scalable-devtools/react-navigation-plugin` next to this plugin.
 
 ## Endpoints
 
@@ -76,69 +61,6 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=2
 ```
 
 Raw element-tree observation and target selection belong to the element inspector plugin. `compact=2` keeps touchable, scrollable, text, and image nodes with node `id` values by default, so an agent should choose an `id` from that compressed tree and pass it back to `/agent-actions/press` or `/agent-actions/scroll`.
-
-### Navigate
-
-```sh
-curl -s -X POST "http://localhost:8081/agent-actions/navigation/navigate" \
-  -H "Content-Type: application/json" \
-  -d '{"appId":"<appId>","name":"Settings","params":{"tab":"profile"}}'
-```
-
-The runtime calls the registered `navigationRef.navigate(...)`.
-
-### Go back
-
-```sh
-curl -s -X POST "http://localhost:8081/agent-actions/navigation/back" \
-  -H "Content-Type: application/json" \
-  -d '{"appId":"<appId>"}'
-```
-
-### Get navigation state
-
-```sh
-curl -s "http://localhost:8081/agent-actions/navigation/state?appId=<appId>"
-```
-
-The endpoint asks the app runtime for the registered React Navigation ref and returns a result whose `value` contains `isReady`, the sanitized root navigation `state`, and `currentRoute`. It does not add derived screen summaries; agents can read React Navigation's own `index` and `routes` structure from `result.value.state`.
-
-Example response:
-
-```json
-{
-  "ok": true,
-  "device": {
-    "appId": "app-1",
-    "name": "iPhone 15",
-    "connected": true,
-    "connectedAt": 1710000000000,
-    "hasDebugger": true
-  },
-  "result": {
-    "requestId": "req-1",
-    "requestedAt": 1710000000100,
-    "completedAt": 1710000000120,
-    "action": "getNavigationState",
-    "status": "ok",
-    "value": {
-      "isReady": true,
-      "state": {
-        "index": 1,
-        "routeNames": ["Home", "Settings"],
-        "routes": [
-          { "key": "Home-a1", "name": "Home" },
-          { "key": "Settings-b2", "name": "Settings" }
-        ]
-      },
-      "currentRoute": {
-        "key": "Settings-b2",
-        "name": "Settings"
-      }
-    }
-  }
-}
-```
 
 ### Press
 
@@ -164,4 +86,4 @@ The runtime finds a matching scrollable component and calls `scrollTo`, `scrollT
 
 This plugin is for development and agent automation workflows. It does not try to guarantee that JS semantic actions are identical to native gestures from a user or a device automation tool.
 
-For the most realistic physical input path, combine `/element-inspector` with a host-side tool such as Maestro, adb, XCTest, or Appium and use the returned layout coordinates to drive native tap and swipe commands.
+For direct React Navigation actions, use `@react-native-scalable-devtools/react-navigation-plugin`. For the most realistic physical input path, combine `/element-inspector` with a host-side tool such as Maestro, adb, XCTest, or Appium and use the returned layout coordinates to drive native tap and swipe commands.

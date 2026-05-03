@@ -2,9 +2,11 @@
 
 [English](README.md)
 
-이 plugin은 외부 agent가 실행 중인 React Native 앱에서 React Navigation으로 화면을 이동하고, 특정 view를 press하거나 scroll container를 스크롤할 수 있도록 host-side endpoint를 제공합니다.
+이 plugin은 외부 agent가 실행 중인 React Native 앱에서 특정 view를 press하거나 scroll container를 스크롤할 수 있도록 host-side endpoint를 제공합니다.
 
-`@react-native-scalable-devtools/element-inspector-plugin`과 함께 쓰도록 설계했습니다. UI 관찰과 target 선택은 `/element-inspector`를 사용하고, 이 plugin은 semantic action에 사용하세요.
+`@react-native-scalable-devtools/element-inspector-plugin`과 함께 쓰도록 설계했습니다. UI 관찰과 target 선택은 `/element-inspector`를 사용하고, 이 plugin은 semantic press와 scroll action에 사용하세요.
+
+React Navigation 지원은 `@react-native-scalable-devtools/react-navigation-plugin`에 있습니다. agent가 React Navigation ref를 등록하고, navigation state를 읽고, navigate 하거나 go back 해야 한다면 해당 package를 사용하세요.
 
 ## Maestro vs agent actions
 
@@ -16,9 +18,9 @@ element-inspector와 agent-actions 조합은 다르게 동작합니다.
 
 1. `/element-inspector?appId=<appId>&plain=1&compact=2`를 호출해 현재 React Native tree를 관찰합니다.
 2. agent가 `id`, `text`, `testID`, `nativeID`, `accessibilityLabel`, `type`, `displayName`, layout 중 하나를 기준으로 action 후보를 고릅니다.
-3. 해당 target으로 `/agent-actions/press`, `/agent-actions/scroll`, `/agent-actions/navigation/*`를 호출합니다.
+3. 해당 target으로 `/agent-actions/press` 또는 `/agent-actions/scroll`을 호출합니다.
 
-이 방식은 action이 React Native runtime 안에서 실행되므로 development-time agent workflow에서는 더 빠르고 deterministic할 수 있습니다. 앱이 안정적인 `testID`를 정의하지 않았더라도, 관찰과 action 사이에 tree가 바뀌지 않았다면 현재 element-inspector `id`로 action할 수 있습니다. React Navigation ref를 등록하면 모든 tap을 재현하지 않고 navigation을 직접 수행할 수도 있습니다.
+이 방식은 action이 React Native runtime 안에서 실행되므로 development-time agent workflow에서는 더 빠르고 deterministic할 수 있습니다. 앱이 안정적인 `testID`를 정의하지 않았더라도, 관찰과 action 사이에 tree가 바뀌지 않았다면 현재 element-inspector `id`로 action할 수 있습니다.
 
 이 조합은 순수 black-box 흐름보다 더 정교하게 앱을 조작할 수도 있습니다. agent는 현재 React tree의 node id, layout bounds, text, 선별된 props를 확인한 뒤, visible text, accessibility label, 화면 좌표로 상호작용을 추정하는 대신 자신이 고른 정확한 Fiber node를 target으로 지정할 수 있습니다. 조밀한 화면, 반복되는 label, 중첩된 touch target, scroll container, 그리고 상태를 관찰한 뒤 후보 하나를 고르고 action 후 다시 관찰해야 하는 agent loop에서 특히 유용합니다.
 
@@ -42,24 +44,7 @@ module.exports = {
 };
 ```
 
-### React Navigation ref 등록
-
-plugin이 navigation container를 자동으로 찾지는 않습니다. 앱에서 navigation ref를 만들고 client entry에 등록해야 합니다.
-
-```ts
-import { createNavigationContainerRef } from '@react-navigation/native';
-import { registerNavigationRef } from '@react-native-scalable-devtools/agent-actions-plugin/client';
-
-export const navigationRef = createNavigationContainerRef();
-
-registerNavigationRef(navigationRef);
-```
-
-```tsx
-<NavigationContainer ref={navigationRef}>
-  {/* screens */}
-</NavigationContainer>
-```
+같은 workflow에서 React Navigation 제어도 필요하다면 `@react-native-scalable-devtools/react-navigation-plugin`을 이 plugin과 함께 등록하세요.
 
 ## Endpoints
 
@@ -76,69 +61,6 @@ curl -s "http://localhost:8081/element-inspector?appId=<appId>&plain=1&compact=2
 ```
 
 Raw element-tree 관찰과 target 선택 책임은 element inspector plugin에 있습니다. `compact=2`는 터치 가능, 스크롤 가능, text, image node와 node `id` 값을 기본으로 유지하므로, agent는 압축된 tree에서 `id`를 고른 뒤 `/agent-actions/press` 또는 `/agent-actions/scroll`에 다시 전달해야 합니다.
-
-### Navigate
-
-```sh
-curl -s -X POST "http://localhost:8081/agent-actions/navigation/navigate" \
-  -H "Content-Type: application/json" \
-  -d '{"appId":"<appId>","name":"Settings","params":{"tab":"profile"}}'
-```
-
-runtime에서 등록된 `navigationRef.navigate(...)`를 호출합니다.
-
-### Go back
-
-```sh
-curl -s -X POST "http://localhost:8081/agent-actions/navigation/back" \
-  -H "Content-Type: application/json" \
-  -d '{"appId":"<appId>"}'
-```
-
-### Navigation state
-
-```sh
-curl -s "http://localhost:8081/agent-actions/navigation/state?appId=<appId>"
-```
-
-이 endpoint는 앱 runtime에서 등록된 React Navigation ref를 읽고, `value` 안에 `isReady`, sanitize된 root navigation `state`, `currentRoute`를 담은 result를 반환합니다. 별도의 화면 요약 field를 만들지 않으므로 agent는 `result.value.state` 안의 React Navigation 고유 `index`와 `routes` 구조를 읽어서 판단하면 됩니다.
-
-응답 예시:
-
-```json
-{
-  "ok": true,
-  "device": {
-    "appId": "app-1",
-    "name": "iPhone 15",
-    "connected": true,
-    "connectedAt": 1710000000000,
-    "hasDebugger": true
-  },
-  "result": {
-    "requestId": "req-1",
-    "requestedAt": 1710000000100,
-    "completedAt": 1710000000120,
-    "action": "getNavigationState",
-    "status": "ok",
-    "value": {
-      "isReady": true,
-      "state": {
-        "index": 1,
-        "routeNames": ["Home", "Settings"],
-        "routes": [
-          { "key": "Home-a1", "name": "Home" },
-          { "key": "Settings-b2", "name": "Settings" }
-        ]
-      },
-      "currentRoute": {
-        "key": "Settings-b2",
-        "name": "Settings"
-      }
-    }
-  }
-}
-```
 
 ### Press
 
@@ -164,4 +86,4 @@ runtime이 매칭되는 scrollable component를 찾고 가능한 경우 `scrollT
 
 이 plugin은 development와 agent automation workflow를 위한 기능입니다. JS semantic action이 실제 사용자나 device automation tool의 native gesture와 완전히 같다고 보장하지는 않습니다.
 
-가장 현실적인 physical input path가 필요하면 `/element-inspector`를 Maestro, adb, XCTest, Appium 같은 host-side tool과 함께 사용하고, 반환된 layout 좌표로 native tap과 swipe를 실행하세요.
+직접 React Navigation action이 필요하면 `@react-native-scalable-devtools/react-navigation-plugin`을 사용하세요. 가장 현실적인 physical input path가 필요하면 `/element-inspector`를 Maestro, adb, XCTest, Appium 같은 host-side tool과 함께 사용하고, 반환된 layout 좌표로 native tap과 swipe를 실행하세요.

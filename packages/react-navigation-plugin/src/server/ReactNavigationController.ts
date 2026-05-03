@@ -1,15 +1,14 @@
 import type { PluginEndpointContext } from '@react-native-scalable-devtools/cli/plugin';
 import {
-  AGENT_ACTIONS_PERFORM_METHOD,
-  AGENT_ACTIONS_RESULT_METHOD,
-  type AgentActionDevice,
-  type AgentActionErrorResponse,
-  type AgentActionName,
-  type AgentActionPerformParams,
-  type AgentActionResult,
-  type AgentActionSuccessResponse,
-  type AgentActionTarget,
-  type AgentScrollCommand,
+  REACT_NAVIGATION_PERFORM_METHOD,
+  REACT_NAVIGATION_RESULT_METHOD,
+  type ReactNavigationCommand,
+  type ReactNavigationDevice,
+  type ReactNavigationErrorResponse,
+  type ReactNavigationPerformParams,
+  type ReactNavigationResult,
+  type ReactNavigationSuccessResponse,
+  type ReactNavigationActionName,
 } from '../shared/protocol';
 import { createRequestId } from './createRequestId';
 
@@ -22,33 +21,33 @@ export interface RequestOptions {
   appId?: string;
 }
 
-export interface RuntimeActionOptions extends RequestOptions {
-  action: AgentActionName;
-  target?: AgentActionTarget;
-  scroll?: AgentScrollCommand;
+export interface RuntimeNavigationOptions extends RequestOptions {
+  action: ReactNavigationActionName;
+  navigation?: ReactNavigationCommand;
 }
 
-export interface ControllerActionSuccess extends AgentActionSuccessResponse {
+export interface ControllerNavigationSuccess
+  extends ReactNavigationSuccessResponse {
   statusCode: number;
 }
 
-export interface ControllerActionError extends AgentActionErrorResponse {
+export interface ControllerNavigationError extends ReactNavigationErrorResponse {
   statusCode: number;
 }
 
-export type ControllerActionResult =
-  | ControllerActionSuccess
-  | ControllerActionError;
+export type ControllerNavigationResult =
+  | ControllerNavigationSuccess
+  | ControllerNavigationError;
 
-interface PendingActionRequest {
-  device: AgentActionDevice;
-  resolve: (result: ControllerActionResult) => void;
+interface PendingNavigationRequest {
+  device: ReactNavigationDevice;
+  resolve: (result: ControllerNavigationResult) => void;
 }
 
-export class AgentActionsController {
+export class ReactNavigationController {
   #context: PluginEndpointContext | null = null;
   #detachAppMessageListener: (() => void) | null = null;
-  #pendingActions = new Map<string, PendingActionRequest>();
+  #pendingActions = new Map<string, PendingNavigationRequest>();
 
   attach(context: PluginEndpointContext): void {
     if (this.#context === context) {
@@ -59,12 +58,12 @@ export class AgentActionsController {
     this.#context = context;
     this.#detachAppMessageListener = context.socketContext.onAppMessage(
       (payload, target) => {
-        this.handleAppMessage(payload, toAgentActionDevice(target));
+        this.handleAppMessage(payload, toReactNavigationDevice(target));
       }
     );
   }
 
-  listDevices(context?: PluginEndpointContext): AgentActionDevice[] {
+  listDevices(context?: PluginEndpointContext): ReactNavigationDevice[] {
     const activeContext = this.#getContext(context);
     if (!activeContext) {
       return [];
@@ -72,13 +71,13 @@ export class AgentActionsController {
 
     return activeContext.socketContext
       .listAppConnections()
-      .map(toAgentActionDevice);
+      .map(toReactNavigationDevice);
   }
 
   requestRuntimeAction(
     context: PluginEndpointContext,
-    options: RuntimeActionOptions
-  ): Promise<ControllerActionResult> {
+    options: RuntimeNavigationOptions
+  ): Promise<ControllerNavigationResult> {
     this.attach(context);
 
     const selection = this.#selectApp(options.appId);
@@ -88,22 +87,21 @@ export class AgentActionsController {
 
     const requestId = createRequestId();
     const requestedAt = Date.now();
-    const params: AgentActionPerformParams = {
+    const params: ReactNavigationPerformParams = {
       requestId,
       requestedAt,
       action: options.action,
-      target: options.target,
-      scroll: options.scroll,
+      navigation: options.navigation,
     };
 
-    return new Promise<ControllerActionResult>((resolve) => {
+    return new Promise<ControllerNavigationResult>((resolve) => {
       this.#pendingActions.set(requestId, {
         device: selection.device,
         resolve,
       });
 
       const sent = context.socketContext.sendToAppById(selection.device.appId, {
-        method: AGENT_ACTIONS_PERFORM_METHOD,
+        method: REACT_NAVIGATION_PERFORM_METHOD,
         params,
       });
 
@@ -120,14 +118,17 @@ export class AgentActionsController {
     });
   }
 
-  handleAppMessage(payload: AppProxyMessage, target: AgentActionDevice): void {
-    if (payload.method === AGENT_ACTIONS_RESULT_METHOD) {
+  handleAppMessage(
+    payload: AppProxyMessage,
+    target: ReactNavigationDevice
+  ): void {
+    if (payload.method === REACT_NAVIGATION_RESULT_METHOD) {
       this.#handleActionResult(payload.params, target);
       return;
     }
   }
 
-  #handleActionResult(params: unknown, target: AgentActionDevice): void {
+  #handleActionResult(params: unknown, target: ReactNavigationDevice): void {
     const result = parseActionResult(params);
     if (!result) {
       return;
@@ -149,7 +150,7 @@ export class AgentActionsController {
 
   #selectApp(
     requestedAppId?: string
-  ): { ok: true; device: AgentActionDevice } | ControllerActionError {
+  ): { ok: true; device: ReactNavigationDevice } | ControllerNavigationError {
     const devices = this.listDevices();
 
     if (devices.length === 0) {
@@ -201,13 +202,13 @@ export class AgentActionsController {
   }
 }
 
-function toAgentActionDevice(target: {
+function toReactNavigationDevice(target: {
   appId: string;
   name: string;
   connected: boolean;
   connectedAt: number;
   hasDebugger: boolean;
-}): AgentActionDevice {
+}): ReactNavigationDevice {
   return {
     appId: target.appId,
     name: target.name,
@@ -217,13 +218,13 @@ function toAgentActionDevice(target: {
   };
 }
 
-function parseActionResult(value: unknown): AgentActionResult | null {
+function parseActionResult(value: unknown): ReactNavigationResult | null {
   const parsed = typeof value === 'string' ? parseJson(value) : value;
   if (!parsed || typeof parsed !== 'object') {
     return null;
   }
 
-  const result = parsed as Partial<AgentActionResult>;
+  const result = parsed as Partial<ReactNavigationResult>;
   if (
     typeof result.requestId !== 'string' ||
     typeof result.requestedAt !== 'number' ||
@@ -234,7 +235,7 @@ function parseActionResult(value: unknown): AgentActionResult | null {
     return null;
   }
 
-  return result as AgentActionResult;
+  return result as ReactNavigationResult;
 }
 
 function parseJson(value: string): unknown {
@@ -249,9 +250,6 @@ function isActionStatus(value: unknown): boolean {
   return value === 'ok' || value === 'unsupported' || value === 'error';
 }
 
-function isSameDevice(
-  a: { appId: string },
-  b: { appId: string }
-): boolean {
+function isSameDevice(a: { appId: string }, b: { appId: string }): boolean {
   return a.appId === b.appId;
 }

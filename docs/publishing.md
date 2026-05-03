@@ -2,16 +2,17 @@
 
 [한국어](publishing.ko.md)
 
-This repository publishes three npm packages:
+This repository publishes five npm packages:
 
 - `@react-native-scalable-devtools/cli`
 - `@react-native-scalable-devtools/network-plugin`
 - `@react-native-scalable-devtools/element-inspector-plugin`
+- `@react-native-scalable-devtools/react-navigation-plugin`
 - `@react-native-scalable-devtools/agent-actions-plugin`
 
 Publishing runs from `.github/workflows/publish.yml` on pushes to `main`. The workflow uses the repository `NPM_TOKEN` secret through `NODE_AUTH_TOKEN` and publishes with npm provenance enabled.
 
-The plugin packages are intentionally published as unscoped package names, so publishing does not require an npm organization or scope. `NPM_TOKEN` still needs publish access for each package name being released.
+The packages are published under the `@react-native-scalable-devtools` npm scope. `NPM_TOKEN` needs publish access for each package name being released.
 
 ## Version Policy
 
@@ -26,13 +27,16 @@ Only package directory changes trigger package publication. The publish helper c
 - `packages/cli`
 - `packages/network-plugin`
 - `packages/element-inspector-plugin`
+- `packages/react-navigation-plugin`
+- `packages/agent-actions-plugin`
 
 Root-only changes do not publish any package. If core and plugin packages change together, publishing always runs in this order:
 
 1. `@react-native-scalable-devtools/cli`
 2. `@react-native-scalable-devtools/network-plugin`
 3. `@react-native-scalable-devtools/element-inspector-plugin`
-4. `@react-native-scalable-devtools/agent-actions-plugin`
+4. `@react-native-scalable-devtools/react-navigation-plugin`
+5. `@react-native-scalable-devtools/agent-actions-plugin`
 
 ## Local Dry Run
 
@@ -63,6 +67,6 @@ yarn install --frozen-lockfile
 yarn typecheck
 yarn build
 yarn test
-for dir in packages/cli packages/network-plugin packages/element-inspector-plugin packages/agent-actions-plugin; do (cd "$dir" && npm pack --dry-run); done
+for dir in packages/cli packages/network-plugin packages/element-inspector-plugin packages/react-navigation-plugin packages/agent-actions-plugin; do (cd "$dir" && npm pack --dry-run); done
 node scripts/publish-changed-packages.mjs --base HEAD~1 --head HEAD --dry-run
 ```

@@ -31,10 +31,7 @@ export function createAgentActionsPlugin(): ScalableDebuggerPlugin {
 
 export * from './types';
 export {
-  AGENT_ACTIONS_BACK_ENDPOINT,
   AGENT_ACTIONS_ENDPOINT,
-  AGENT_ACTIONS_NAVIGATE_ENDPOINT,
-  AGENT_ACTIONS_NAVIGATION_STATE_ENDPOINT,
   AGENT_ACTIONS_PRESS_ENDPOINT,
   AGENT_ACTIONS_SCROLL_ENDPOINT,
 } from './shared/protocol';

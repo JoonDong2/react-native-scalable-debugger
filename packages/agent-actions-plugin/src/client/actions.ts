@@ -1,15 +1,9 @@
 import type {
   AgentActionResult,
   AgentActionTarget,
-  AgentNavigationCommand,
   AgentScrollCommand,
   JSONValue,
 } from '../shared/protocol';
-import {
-  getNavigationRef,
-  isNavigationReady,
-  type NavigationRefLike,
-} from './navigationRef';
 import {
   collectFiberCandidates,
   getMatchProps,
@@ -43,18 +37,11 @@ export async function performAgentAction(
   action: string,
   params: {
     target?: AgentActionTarget;
-    navigation?: AgentNavigationCommand;
     scroll?: AgentScrollCommand;
   }
 ): Promise<AgentActionResult> {
   try {
     switch (action) {
-      case 'getNavigationState':
-        return getNavigationState(context);
-      case 'navigate':
-        return navigate(context, params.navigation);
-      case 'goBack':
-        return goBack(context);
       case 'press':
         return press(context, params.target);
       case 'scroll':
@@ -69,85 +56,6 @@ export async function performAgentAction(
       reason: error instanceof Error ? error.message : String(error),
     });
   }
-}
-
-function getNavigationState(context: ActionContext): AgentActionResult {
-  const ref = getNavigationRef();
-  if (!ref) {
-    return createResult(context, 'getNavigationState', 'unsupported', {
-      reason:
-        'No navigation ref is registered. Call registerNavigationRef(navigationRef) from the app.',
-    });
-  }
-
-  return createResult(context, 'getNavigationState', 'ok', {
-    value: {
-      isReady: isNavigationReady(ref),
-      state: sanitizeJson(ref.getRootState?.()),
-      currentRoute: sanitizeJson(ref.getCurrentRoute?.()),
-    },
-  });
-}
-
-function navigate(
-  context: ActionContext,
-  command: AgentNavigationCommand | undefined
-): AgentActionResult {
-  const ref = getReadyNavigationRef(context, 'navigate');
-  if ('status' in ref) {
-    return ref;
-  }
-
-  if (!command || typeof command.name !== 'string' || command.name.length === 0) {
-    return createResult(context, 'navigate', 'error', {
-      reason: 'navigation.name must be a non-empty string.',
-    });
-  }
-  if (typeof ref.navigate !== 'function') {
-    return createResult(context, 'navigate', 'unsupported', {
-      reason: 'The registered navigation ref does not expose navigate(...).',
-    });
-  }
-
-  if (command.key || command.path || command.merge !== undefined) {
-    ref.navigate({
-      name: command.name,
-      params: command.params,
-      key: command.key,
-      path: command.path,
-      merge: command.merge,
-    });
-  } else if (command.params !== undefined) {
-    ref.navigate(command.name, command.params);
-  } else {
-    ref.navigate(command.name);
-  }
-
-  return createResult(context, 'navigate', 'ok', {
-    value: getNavigationValue(ref),
-  });
-}
-
-function goBack(context: ActionContext): AgentActionResult {
-  const ref = getReadyNavigationRef(context, 'goBack');
-  if ('status' in ref) {
-    return ref;
-  }
-  if (typeof ref.goBack !== 'function') {
-    return createResult(context, 'goBack', 'unsupported', {
-      reason: 'The registered navigation ref does not expose goBack().',
-    });
-  }
-  if (typeof ref.canGoBack === 'function' && !ref.canGoBack()) {
-    return createResult(context, 'goBack', 'unsupported', {
-      reason: 'The navigation ref reports that it cannot go back.',
-    });
-  }
-
-  ref.goBack();
-  return createResult(context, 'goBack', 'ok', {
-    value: getNavigationValue(ref),
-  });
 }
 
 function press(
@@ -215,32 +123,6 @@ function scroll(
     ...(match ? { target: summarizeCandidate(match) } : {}),
     actionTarget: summarizeCandidate(scrollable),
   });
-}
-
-function getReadyNavigationRef(
-  context: ActionContext,
-  action: 'navigate' | 'goBack'
-): NavigationRefLike | AgentActionResult {
-  const ref = getNavigationRef();
-  if (!ref) {
-    return createResult(context, action, 'unsupported', {
-      reason:
-        'No navigation ref is registered. Call registerNavigationRef(navigationRef) from the app.',
-    });
-  }
-  if (!isNavigationReady(ref)) {
-    return createResult(context, action, 'unsupported', {
-      reason: 'The registered navigation ref is not ready yet.',
-    });
-  }
-  return ref;
-}
-
-function getNavigationValue(ref: NavigationRefLike): JSONValue {
-  return {
-    state: sanitizeJson(ref.getRootState?.()),
-    currentRoute: sanitizeJson(ref.getCurrentRoute?.()),
-  };
 }
 
 function findTargetCandidate(

@@ -5,30 +5,26 @@ import type {
 } from '@react-native-scalable-devtools/cli/plugin';
 import type { IncomingMessage, ServerResponse } from 'http';
 import {
-  AGENT_ACTIONS_PRESS_ENDPOINT,
-  AGENT_ACTIONS_SCROLL_ENDPOINT,
-  type AgentActionTarget,
-  type AgentScrollCommand,
+  REACT_NAVIGATION_BACK_ENDPOINT,
+  REACT_NAVIGATION_NAVIGATE_ENDPOINT,
+  REACT_NAVIGATION_STATE_ENDPOINT,
+  type ReactNavigationCommand,
 } from '../shared/protocol';
 import type {
-  AgentActionsController,
-  ControllerActionResult,
-} from './AgentActionsController';
+  ControllerNavigationResult,
+  ReactNavigationController,
+} from './ReactNavigationController';
 
 const MAX_BODY_BYTES = 1024 * 1024;
 
 interface JsonBody {
   appId?: string;
-  target?: AgentActionTarget;
-  scroll?: AgentScrollCommand;
-  direction?: AgentScrollCommand['direction'];
-  amount?: number;
-  x?: number;
-  y?: number;
-  offset?: number;
-  animated?: boolean;
-  to?: AgentScrollCommand['to'];
-  query?: string;
+  navigation?: ReactNavigationCommand;
+  name?: string;
+  params?: unknown;
+  key?: string;
+  path?: string;
+  merge?: boolean;
 }
 
 type Handler = (
@@ -37,15 +33,22 @@ type Handler = (
   context: PluginEndpointContext
 ) => Promise<void>;
 
-export function createAgentActionsMiddlewareEndpoints(
-  controller: AgentActionsController
+export function createReactNavigationMiddlewareEndpoints(
+  controller: ReactNavigationController
 ): MiddlewareEndpointContribution[] {
   return [
-    createEndpoint(AGENT_ACTIONS_PRESS_ENDPOINT, (request, response, context) =>
-      handlePress(controller, request, response, context)
+    createEndpoint(
+      REACT_NAVIGATION_STATE_ENDPOINT,
+      (request, response, context) =>
+        handleNavigationState(controller, request, response, context)
     ),
-    createEndpoint(AGENT_ACTIONS_SCROLL_ENDPOINT, (request, response, context) =>
-      handleScroll(controller, request, response, context)
+    createEndpoint(
+      REACT_NAVIGATION_NAVIGATE_ENDPOINT,
+      (request, response, context) =>
+        handleNavigate(controller, request, response, context)
+    ),
+    createEndpoint(REACT_NAVIGATION_BACK_ENDPOINT, (request, response, context) =>
+      handleBack(controller, request, response, context)
     ),
   ];
 }
@@ -65,8 +68,46 @@ function createEndpoint(
   };
 }
 
-async function handlePress(
-  controller: AgentActionsController,
+async function handleNavigationState(
+  controller: ReactNavigationController,
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: PluginEndpointContext
+): Promise<void> {
+  if (!allowMethod(request, response, 'GET')) {
+    return;
+  }
+
+  const url = getRequestUrl(request);
+  const result = await controller.requestRuntimeAction(context, {
+    action: 'getNavigationState',
+    appId: getStringParam(url, 'appId'),
+  });
+  writeControllerResult(response, result);
+}
+
+async function handleNavigate(
+  controller: ReactNavigationController,
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: PluginEndpointContext
+): Promise<void> {
+  if (!allowMethod(request, response, 'POST')) {
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const navigation = normalizeNavigation(body);
+  const result = await controller.requestRuntimeAction(context, {
+    action: 'navigate',
+    appId: body.appId,
+    navigation,
+  });
+  writeControllerResult(response, result);
+}
+
+async function handleBack(
+  controller: ReactNavigationController,
   request: IncomingMessage,
   response: ServerResponse,
   context: PluginEndpointContext
@@ -77,53 +118,22 @@ async function handlePress(
 
   const body = await readJsonBody(request);
   const result = await controller.requestRuntimeAction(context, {
-    action: 'press',
+    action: 'goBack',
     appId: body.appId,
-    target: normalizeTarget(body),
   });
   writeControllerResult(response, result);
 }
 
-async function handleScroll(
-  controller: AgentActionsController,
-  request: IncomingMessage,
-  response: ServerResponse,
-  context: PluginEndpointContext
-): Promise<void> {
-  if (!allowMethod(request, response, 'POST')) {
-    return;
-  }
-
-  const body = await readJsonBody(request);
-  const result = await controller.requestRuntimeAction(context, {
-    action: 'scroll',
-    appId: body.appId,
-    target: normalizeTarget(body),
-    scroll: normalizeScroll(body),
-  });
-  writeControllerResult(response, result);
-}
-
-function normalizeTarget(body: JsonBody): AgentActionTarget | undefined {
-  if (body.target && typeof body.target === 'object') {
-    return body.target;
-  }
-  if (typeof body.query === 'string') {
-    return { query: body.query };
-  }
-  return undefined;
-}
-
-function normalizeScroll(body: JsonBody): AgentScrollCommand {
+function normalizeNavigation(body: JsonBody): ReactNavigationCommand {
   return {
-    ...(body.scroll ?? {}),
-    direction: body.direction ?? body.scroll?.direction,
-    amount: body.amount ?? body.scroll?.amount,
-    x: body.x ?? body.scroll?.x,
-    y: body.y ?? body.scroll?.y,
-    offset: body.offset ?? body.scroll?.offset,
-    animated: body.animated ?? body.scroll?.animated,
-    to: body.to ?? body.scroll?.to,
+    ...(body.navigation ?? {}),
+    name: body.name ?? body.navigation?.name,
+    params:
+      (body.params as ReactNavigationCommand['params']) ??
+      body.navigation?.params,
+    key: body.key ?? body.navigation?.key,
+    path: body.path ?? body.navigation?.path,
+    merge: body.merge ?? body.navigation?.merge,
   };
 }
 
@@ -174,7 +184,7 @@ async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {
 
 function writeControllerResult(
   response: ServerResponse,
-  result: ControllerActionResult
+  result: ControllerNavigationResult
 ): void {
   if (result.ok) {
     writeJson(response, result.statusCode, withoutStatusCode(result));
@@ -188,6 +198,14 @@ function withoutStatusCode<T extends { statusCode: number }>(
 ): Omit<T, 'statusCode'> {
   const { statusCode: _statusCode, ...rest } = value;
   return rest;
+}
+
+function getRequestUrl(request: IncomingMessage): URL {
+  return new URL(request.url || '/', 'http://localhost');
+}
+
+function getStringParam(url: URL, name: string): string | undefined {
+  return url.searchParams.get(name) ?? undefined;
 }
 
 function writeJson(

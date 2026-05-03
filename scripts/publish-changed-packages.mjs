@@ -27,6 +27,10 @@ const PACKAGES = [
     directory: 'packages/element-inspector-plugin',
   },
   {
+    name: '@react-native-scalable-devtools/react-navigation-plugin',
+    directory: 'packages/react-navigation-plugin',
+  },
+  {
     name: '@react-native-scalable-devtools/agent-actions-plugin',
     directory: 'packages/agent-actions-plugin',
   },

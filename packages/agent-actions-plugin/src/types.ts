@@ -9,7 +9,6 @@ export type {
   AgentActionStatus,
   AgentActionSuccessResponse,
   AgentActionTarget,
-  AgentNavigationCommand,
   AgentScrollCommand,
   JSONValue,
 } from './shared/protocol';

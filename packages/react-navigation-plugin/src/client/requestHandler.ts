@@ -1,11 +1,11 @@
 import { DebuggerConnection } from '@react-native-scalable-devtools/cli/client';
 import {
-  AGENT_ACTIONS_PERFORM_METHOD,
-  AGENT_ACTIONS_RESULT_METHOD,
-  type AgentActionPerformParams,
-  type AgentActionResult,
+  REACT_NAVIGATION_PERFORM_METHOD,
+  REACT_NAVIGATION_RESULT_METHOD,
+  type ReactNavigationPerformParams,
+  type ReactNavigationResult,
 } from '../shared/protocol';
-import { performAgentAction } from './actions';
+import { performReactNavigationAction } from './actions';
 
 interface AppProxyMessage {
   method?: string;
@@ -14,14 +14,14 @@ interface AppProxyMessage {
 
 let installed = false;
 
-export function installAgentActionsRequestHandler(): void {
+export function installReactNavigationRequestHandler(): void {
   if (installed) {
     return;
   }
   installed = true;
 
   DebuggerConnection.addEventListener((payload: AppProxyMessage) => {
-    if (payload.method !== AGENT_ACTIONS_PERFORM_METHOD) {
+    if (payload.method !== REACT_NAVIGATION_PERFORM_METHOD) {
       return;
     }
 
@@ -35,30 +35,29 @@ async function handlePerformRequest(params: unknown): Promise<void> {
     return;
   }
 
-  const result = await performAgentAction(
+  const result = await performReactNavigationAction(
     {
       requestId: request.requestId,
       requestedAt: request.requestedAt,
     },
     request.action,
     {
-      target: request.target,
-      scroll: request.scroll,
+      navigation: request.navigation,
     }
   );
   safeSendResult(result);
 }
 
-function safeSendResult(result: AgentActionResult): void {
+function safeSendResult(result: ReactNavigationResult): void {
   try {
     DebuggerConnection.send({
-      method: AGENT_ACTIONS_RESULT_METHOD,
+      method: REACT_NAVIGATION_RESULT_METHOD,
       params: result,
     });
   } catch (error) {
     try {
       DebuggerConnection.send({
-        method: AGENT_ACTIONS_RESULT_METHOD,
+        method: REACT_NAVIGATION_RESULT_METHOD,
         params: {
           ...result,
           completedAt: Date.now(),
@@ -67,18 +66,18 @@ function safeSendResult(result: AgentActionResult): void {
         },
       });
     } catch {
-      // Keep agent actions from surfacing unhandled runtime errors.
+      // Keep navigation actions from surfacing unhandled runtime errors.
     }
   }
 }
 
-function parsePerformParams(value: unknown): AgentActionPerformParams | null {
+function parsePerformParams(value: unknown): ReactNavigationPerformParams | null {
   const params = typeof value === 'string' ? parseJson(value) : value;
   if (!params || typeof params !== 'object') {
     return null;
   }
 
-  const candidate = params as Partial<AgentActionPerformParams>;
+  const candidate = params as Partial<ReactNavigationPerformParams>;
   if (
     typeof candidate.requestId !== 'string' ||
     typeof candidate.requestedAt !== 'number' ||
@@ -87,7 +86,7 @@ function parsePerformParams(value: unknown): AgentActionPerformParams | null {
     return null;
   }
 
-  return candidate as AgentActionPerformParams;
+  return candidate as ReactNavigationPerformParams;
 }
 
 function parseJson(value: string): unknown {

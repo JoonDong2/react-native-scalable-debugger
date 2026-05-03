@@ -1,9 +1,4 @@
 export const AGENT_ACTIONS_ENDPOINT = '/agent-actions';
-export const AGENT_ACTIONS_NAVIGATION_STATE_ENDPOINT =
-  '/agent-actions/navigation/state';
-export const AGENT_ACTIONS_NAVIGATE_ENDPOINT =
-  '/agent-actions/navigation/navigate';
-export const AGENT_ACTIONS_BACK_ENDPOINT = '/agent-actions/navigation/back';
 export const AGENT_ACTIONS_PRESS_ENDPOINT = '/agent-actions/press';
 export const AGENT_ACTIONS_SCROLL_ENDPOINT = '/agent-actions/scroll';
 
@@ -18,12 +13,7 @@ export type JSONValue =
   | JSONValue[]
   | { [key: string]: JSONValue };
 
-export type AgentActionName =
-  | 'getNavigationState'
-  | 'navigate'
-  | 'goBack'
-  | 'press'
-  | 'scroll';
+export type AgentActionName = 'press' | 'scroll';
 
 export type AgentActionStatus = 'ok' | 'unsupported' | 'error';
 
@@ -38,14 +28,6 @@ export interface AgentActionTarget extends Record<string, unknown> {
   query?: string;
   exact?: boolean;
   index?: number;
-}
-
-export interface AgentNavigationCommand extends Record<string, unknown> {
-  name?: string;
-  params?: JSONValue;
-  key?: string;
-  path?: string;
-  merge?: boolean;
 }
 
 export interface AgentScrollCommand extends Record<string, unknown> {
@@ -71,7 +53,6 @@ export interface AgentActionPerformParams extends Record<string, unknown> {
   requestedAt: number;
   action: AgentActionName;
   target?: AgentActionTarget;
-  navigation?: AgentNavigationCommand;
   scroll?: AgentScrollCommand;
 }
 

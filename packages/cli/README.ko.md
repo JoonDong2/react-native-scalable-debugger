@@ -13,7 +13,7 @@
 - 디버거 서버를 실행하는 대체 `startCommand`
 - 연결된 React Native 앱을 추적하는 AppProxy
 - 요청을 올바른 앱으로 보내기 위한 공용 `appId` selector
-- network plugin과 element inspector plugin이 사용하는 플러그인 API
+- network, element inspector, React Navigation, agent action plugin이 사용하는 플러그인 API
 - 커스텀 HTTP endpoint, WebSocket endpoint, 디버거 프로토콜 동작을 위한 hook
 
 하나의 앱이든 여러 앱이든, 이 패키지는 연결 모델과 플러그인 통합을 한 곳에 모아두는 계층입니다.
@@ -47,6 +47,9 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
+  reactNavigationPlugin,
+} = require('@react-native-scalable-devtools/react-navigation-plugin');
+const {
   agentActionsPlugin,
 } = require('@react-native-scalable-devtools/agent-actions-plugin');
 
@@ -55,6 +58,7 @@ module.exports = {
     startCommand(
       networkPanelPlugin({ patchDebuggerFrontend }),
       elementInspectorPlugin(),
+      reactNavigationPlugin(),
       agentActionsPlugin(),
     ),
   ],
@@ -161,14 +165,26 @@ core package는 의도적으로 작게 유지합니다. 특별한 동작은 plug
 
 이 이미지는 이 README 옆에 문서용으로만 두었습니다. 패키지 `files` 목록에 포함하지 않았기 때문에 npm 배포본에는 포함되지 않습니다.
 
+### `@react-native-scalable-devtools/react-navigation-plugin`
+
+이 plugin은 외부 agent가 등록된 React Navigation state를 읽고, 등록된 `navigationRef`로 navigate 하거나 go back 해야 할 때 사용합니다.
+
+필요한 이유:
+
+- React Navigation 관련 동작을 일반 UI action에서 분리해 둡니다.
+- 앱이 React Navigation `navigationRef`를 등록해서 agent가 화면을 이동할 수 있게 합니다.
+- host-side `/react-navigation/state`, `/react-navigation/navigate`, `/react-navigation/back` endpoint를 제공합니다.
+- 모든 tap을 재현하지 않고 app runtime 안에서 navigation을 실행합니다.
+
+이 plugin은 React Navigation을 통한 JavaScript semantic navigation을 수행합니다. Native gesture나 OS-level back 동작을 시뮬레이션하지는 않습니다.
+
 ### `@react-native-scalable-devtools/agent-actions-plugin`
 
-이 plugin은 외부 agent가 현재 UI target을 resolve하고, React Navigation 화면을 이동하고, 매칭된 view를 press하거나 scroll container를 스크롤해야 할 때 사용합니다.
+이 plugin은 외부 agent가 현재 UI target을 resolve하고, 매칭된 view를 press하거나 scroll container를 스크롤해야 할 때 사용합니다.
 
 필요한 이유:
 
 - live element tree 관찰은 `/element-inspector`와 함께 사용합니다.
-- 앱이 React Navigation `navigationRef`를 등록해서 agent가 화면을 이동할 수 있게 합니다.
 - `id`, `testID`, `accessibilityLabel`, text, component 이름, broad query로 view를 찾을 수 있습니다.
 - 앱 runtime에서 enabled `onPress` handler와 일반적인 scroll method를 호출할 수 있습니다.
 
@@ -233,6 +249,7 @@ plugin capabilities:
 
 - `GET /apps`는 연결된 앱과 metadata를 반환합니다.
 - `GET /element-inspector`는 앱 runtime에서 새 tree snapshot을 요청합니다.
-- `POST /agent-actions/navigation/navigate`, `/agent-actions/press`, `/agent-actions/scroll`은 앱 runtime에 semantic action 수행을 요청합니다.
+- `POST /react-navigation/navigate`와 `/react-navigation/back`은 앱 runtime에 semantic React Navigation action 수행을 요청합니다.
+- `POST /agent-actions/press`와 `/agent-actions/scroll`은 앱 runtime에 semantic UI action 수행을 요청합니다.
 - `appId`는 외부 요청의 public selector로 유지됩니다.
 - `deviceInfo.deviceId`는 device id가 필요한 도구를 위해 계속 제공됩니다.
