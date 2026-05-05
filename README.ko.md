@@ -51,7 +51,7 @@ const {
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 const {
   patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
-  reactQueryPlugin,
+  tanstackQueryPlugin,
 } = require('@react-native-scalable-devtools/tanstack-query-plugin');
 
 module.exports = {
@@ -64,7 +64,7 @@ module.exports = {
       reactNavigationPlugin({
         patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
       }),
-      reactQueryPlugin({
+      tanstackQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),
     ),

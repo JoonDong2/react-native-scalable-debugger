@@ -8,13 +8,13 @@ import { createReactQueryDomain } from './server/ReactQueryDomain';
 import { createReactQueryMiddlewareEndpoints } from './server/createReactQueryMiddleware';
 import { preparePatchedFrontend } from './server/patchDebuggerFrontend';
 
-export interface ReactQueryPluginOptions {
+export interface TanstackQueryPluginOptions {
   patchDebuggerFrontend?: DebuggerFrontendPatch;
 }
 
 const controller = new ReactQueryController();
 
-const reactQueryPluginDefinition: ScalableDebuggerPlugin = {
+const tanstackQueryPluginDefinition: ScalableDebuggerPlugin = {
   name: 'react-query',
   domains: [createReactQueryDomain],
   clientEntries: [
@@ -28,17 +28,17 @@ const reactQueryPluginDefinition: ScalableDebuggerPlugin = {
 export const patchDebuggerFrontend: DebuggerFrontendPatch = ({ sourceDist }) =>
   preparePatchedFrontend(sourceDist);
 
-export function reactQueryPlugin(
-  options: ReactQueryPluginOptions = {}
+export function tanstackQueryPlugin(
+  options: TanstackQueryPluginOptions = {}
 ): RunServerOptions {
   return {
-    plugins: [reactQueryPluginDefinition],
+    plugins: [tanstackQueryPluginDefinition],
     debuggerFrontendPatch: options.patchDebuggerFrontend,
   };
 }
 
-export function createReactQueryPlugin(): ScalableDebuggerPlugin {
-  return reactQueryPluginDefinition;
+export function createTanstackQueryPlugin(): ScalableDebuggerPlugin {
+  return tanstackQueryPluginDefinition;
 }
 
 export * from './types';
@@ -51,4 +51,4 @@ export {
   REACT_QUERY_ENDPOINT,
   REACT_QUERY_QUERIES_ENDPOINT,
 } from './shared/protocol';
-export default reactQueryPlugin;
+export default tanstackQueryPlugin;
