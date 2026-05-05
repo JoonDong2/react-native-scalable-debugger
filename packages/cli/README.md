@@ -109,7 +109,6 @@ Useful query parameters:
 - `compact=1`: reduce noise by removing zero-size nodes and flattening simple wrapper pairs
 - `plain=1`: return an indented `text/plain` tree instead of JSON
 - `layoutPrecision`: control decimal precision for layout values
-- `nodeId`: pass `1` to include node ids in compact/plain output, or `0` to remove node ids from JSON output
 
 The response is generated on demand, so it reflects the current UI tree when the request arrives.
 

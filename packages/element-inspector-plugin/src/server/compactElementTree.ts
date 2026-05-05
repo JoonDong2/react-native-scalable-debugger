@@ -6,7 +6,6 @@ import type {
 } from '../shared/protocol';
 
 export interface CompactElementInspectorNode {
-  id?: string;
   type: string;
   displayName?: string;
   layout?: ElementInspectorLayout;
@@ -15,12 +14,7 @@ export interface CompactElementInspectorNode {
   source?: ElementInspectorSource;
   children?: CompactElementInspectorNode[];
 }
-
 type JSONObject = { [key: string]: JSONValue };
-
-export interface CompactElementTreeOptions {
-  includeNodeId?: boolean;
-}
 
 const IGNORED_ELEMENT_NAMES = new Set([
   'DebuggingOverlay',
@@ -29,30 +23,23 @@ const IGNORED_ELEMENT_NAMES = new Set([
 const TEXT_HOST_TYPES = new Set(['RCTText', 'TextImplLegacy']);
 
 export function compactElementTree(
-  node: ElementInspectorNode,
-  options: CompactElementTreeOptions = {}
+  node: ElementInspectorNode
 ): CompactElementInspectorNode | null {
-  return compactNode(node, options);
+  return compactNode(node);
 }
 
-function compactNode(
-  node: ElementInspectorNode,
-  options: CompactElementTreeOptions
-): CompactElementInspectorNode | null {
+function compactNode(node: ElementInspectorNode): CompactElementInspectorNode | null {
   if (shouldRemoveNode(node)) {
     return null;
   }
 
   const children = (node.children ?? [])
-    .map((child) => compactNode(child, options))
+    .map((child) => compactNode(child))
     .filter((child): child is CompactElementInspectorNode => child != null);
   const output: CompactElementInspectorNode = {
     type: node.type,
   };
 
-  if (options.includeNodeId) {
-    output.id = node.id;
-  }
   if (node.displayName !== undefined) {
     output.displayName = node.displayName;
   }

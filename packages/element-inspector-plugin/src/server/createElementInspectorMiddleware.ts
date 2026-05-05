@@ -15,10 +15,9 @@ const SUPPORTED_QUERY_PARAMS = new Set([
   'compact',
   'plain',
   'layoutPrecision',
-  'nodeId',
 ]);
 const SUPPORTED_QUERY_PARAMS_MESSAGE =
-  'appId, start, compact, plain, layoutPrecision, and nodeId';
+  'appId, start, compact, plain, and layoutPrecision';
 const DEFAULT_LAYOUT_PRECISION = 1;
 type CompactMode = 0 | 1;
 
@@ -69,8 +68,6 @@ export function createElementInspectorMiddleware(
     const layoutPrecision = parseLayoutPrecision(
       requestUrl.searchParams.get('layoutPrecision')
     );
-    const nodeId = parseOptionalModeFlag(requestUrl.searchParams.get('nodeId'));
-    const includeNodeId = nodeId ?? (!compact && !plain);
     const result = await controller.requestSnapshot(context, {
       appId: requestUrl.searchParams.get('appId') ?? undefined,
     });
@@ -82,20 +79,16 @@ export function createElementInspectorMiddleware(
           : result.snapshot.root;
       const snapshotRoot =
         compact && startedRoot
-          ? compactElementTree(startedRoot, {
-              includeNodeId,
-            }) ?? undefined
+          ? compactElementTree(startedRoot) ?? undefined
           : startedRoot;
       normalizeLayoutPrecision(snapshotRoot, layoutPrecision);
-      if (!includeNodeId) {
-        removeNodeIds(snapshotRoot);
-      }
+      removeNodeIds(snapshotRoot);
 
       if (plain) {
         writeText(
           response,
           result.statusCode,
-          renderElementTreeText(snapshotRoot, { includeNodeId })
+          renderElementTreeText(snapshotRoot)
         );
         return;
       }
@@ -127,13 +120,6 @@ function parseModeFlag(value: string | null): boolean {
 
 function parseCompactMode(value: string | null): CompactMode {
   return value === '1' ? 1 : 0;
-}
-
-function parseOptionalModeFlag(value: string | null): boolean | undefined {
-  if (value == null) {
-    return undefined;
-  }
-  return value === '1';
 }
 
 function parseStartType(value: string | null): string | undefined {

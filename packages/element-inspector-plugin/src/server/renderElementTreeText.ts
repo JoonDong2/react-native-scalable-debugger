@@ -1,17 +1,12 @@
 import type { ElementInspectorLayout, JSONValue } from '../shared/protocol';
 
 export interface RenderableElementTreeNode {
-  id?: string;
   type: string;
   displayName?: string;
   text?: string;
   layout?: ElementInspectorLayout;
   props?: Record<string, JSONValue>;
   children?: RenderableElementTreeNode[];
-}
-
-export interface RenderElementTreeTextOptions {
-  includeNodeId?: boolean;
 }
 
 const TARGET_PROP_NAMES = new Set([
@@ -26,30 +21,24 @@ const TARGET_PROP_NAMES = new Set([
 ]);
 
 export function renderElementTreeText(
-  root: RenderableElementTreeNode | null | undefined,
-  options: RenderElementTreeTextOptions = {}
+  root: RenderableElementTreeNode | null | undefined
 ): string {
   if (!root) {
     return '';
   }
 
   const lines: string[] = [];
-  appendNode(lines, root, 0, options);
+  appendNode(lines, root, 0);
   return lines.join('\n');
 }
 
 function appendNode(
   lines: string[],
   node: RenderableElementTreeNode,
-  depth: number,
-  options: RenderElementTreeTextOptions
+  depth: number
 ): void {
   const label = node.displayName ?? node.type;
   const parts = [`${'  '.repeat(depth)}${label}`];
-
-  if (options.includeNodeId && node.id !== undefined) {
-    parts.push(`id=${node.id}`);
-  }
   if (node.text !== undefined) {
     parts.push(JSON.stringify(node.text));
   }
@@ -67,7 +56,7 @@ function appendNode(
   lines.push(parts.join(' '));
 
   for (const child of node.children ?? []) {
-    appendNode(lines, child, depth + 1, options);
+    appendNode(lines, child, depth + 1);
   }
 }
 

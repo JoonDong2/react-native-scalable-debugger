@@ -109,7 +109,6 @@ element inspector plugin은 root node 선택, wrapper flatten, plain text 변환
 - `compact=1`: zero-size node를 제거하고 단순 wrapper pair를 flatten하여 노이즈를 줄임
 - `plain=1`: JSON 대신 들여쓰기된 `text/plain` tree를 반환
 - `layoutPrecision`: layout 값의 소수점 자릿수 제어
-- `nodeId`: `1`을 전달하면 compact/plain output에 node id를 포함하고, `0`을 전달하면 JSON output에서 node id를 제거
 
 응답은 요청 시점에 생성되므로, 현재 UI tree를 그대로 반영합니다.
 
