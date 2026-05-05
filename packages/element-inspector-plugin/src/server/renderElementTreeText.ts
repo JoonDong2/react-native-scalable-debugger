@@ -61,9 +61,9 @@ function appendNode(
 }
 
 function renderLayout(layout: ElementInspectorLayout): string {
-  return `[${formatNumber(layout.x)},${formatNumber(layout.y)},${formatNumber(
+  return `[${formatNumber(layout.x)} ${formatNumber(layout.y)} ${formatNumber(
     layout.width
-  )},${formatNumber(layout.height)}]`;
+  )} ${formatNumber(layout.height)}]`;
 }
 
 function formatNumber(value: number): string {

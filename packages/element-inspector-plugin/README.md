@@ -71,11 +71,11 @@ The element inspector plugin helps reduce token and context usage by letting you
 
 From the host, you can inspect the live element tree without attaching a visual debugger or taking a screenshot first.
 
-Plain output uses two spaces per depth and renders each node as `Type "text" [x,y,width,height] style={...}` when text, layout, and style props are available. When target props such as `testID`, `nativeID`, or `accessibilityLabel` are present, they are rendered as `props={...}`. The `style` field uses a compact representation that omits quotes around identifier-like keys. `layout` values use the same decimal precision as the JSON response and default to one decimal place.
+Plain output uses two spaces per depth and renders each node as `Type "text" [x y width height] style={...}` when text, layout, and style props are available. When target props such as `testID`, `nativeID`, or `accessibilityLabel` are present, they are rendered as `props={...}`. The `style` field uses a compact representation that omits quotes around identifier-like keys. `layout` values use the same decimal precision as the JSON response and default to one decimal place.
 
 ```text
-RCTView [0,0,390,844]
-  RCTText "Welcome to React Native" [65,230,271,28] style={fontSize:18}
+RCTView [0 0 390 844]
+  RCTText "Welcome to React Native" [65 230 271 28] style={fontSize:18}
 ```
 
 ## Output Notes

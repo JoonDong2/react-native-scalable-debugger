@@ -72,11 +72,11 @@ element inspector plugin은 root node 선택, wrapper flatten, plain text 변환
 
 가상환경이 아닌 개발 호스트 환경에서 live element tree를 직접 확인할 수 있습니다.
 
-Plain output은 depth마다 두 칸을 들여쓰며, text, layout, style prop이 있으면 각 node를 `Type "text" [x,y,width,height] style={...}` 형식으로 렌더링합니다. `testID`, `nativeID`, `accessibilityLabel` 같은 target prop이 있으면 `props={...}` 형식으로 렌더링합니다. `style` field는 token을 줄이기 위한 compact 표현이며 identifier 형태의 key에는 따옴표를 붙이지 않습니다. `layout` 값은 JSON response와 같은 소수점 자릿수를 사용하고, 기본값은 소수점 첫째 자리입니다.
+Plain output은 depth마다 두 칸을 들여쓰며, text, layout, style prop이 있으면 각 node를 `Type "text" [x y width height] style={...}` 형식으로 렌더링합니다. `testID`, `nativeID`, `accessibilityLabel` 같은 target prop이 있으면 `props={...}` 형식으로 렌더링합니다. `style` field는 token을 줄이기 위한 compact 표현이며 identifier 형태의 key에는 따옴표를 붙이지 않습니다. `layout` 값은 JSON response와 같은 소수점 자릿수를 사용하고, 기본값은 소수점 첫째 자리입니다.
 
 ```text
-RCTView [0,0,390,844]
-  RCTText "Welcome to React Native" [65,230,271,28] style={fontSize:18}
+RCTView [0 0 390 844]
+  RCTText "Welcome to React Native" [65 230 271 28] style={fontSize:18}
 ```
 
 ## 출력 노트
