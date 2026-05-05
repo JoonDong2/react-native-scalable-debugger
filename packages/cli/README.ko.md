@@ -13,7 +13,7 @@
 - 디버거 서버를 실행하는 대체 `startCommand`
 - 연결된 React Native 앱을 추적하는 AppProxy
 - 요청을 올바른 앱으로 보내기 위한 공용 `appId` selector
-- network, element inspector, React Navigation, agent action plugin이 사용하는 플러그인 API
+- network, element inspector, React Navigation, React Query plugin이 사용하는 플러그인 API
 - 커스텀 HTTP endpoint, WebSocket endpoint, 디버거 프로토콜 동작을 위한 hook
 
 하나의 앱이든 여러 앱이든, 이 패키지는 연결 모델과 플러그인 통합을 한 곳에 모아두는 계층입니다.
@@ -54,9 +54,6 @@ const {
   patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   reactQueryPlugin,
 } = require('@react-native-scalable-devtools/react-query-plugin');
-const {
-  agentActionsPlugin,
-} = require('@react-native-scalable-devtools/agent-actions-plugin');
 
 module.exports = {
   commands: [
@@ -71,7 +68,6 @@ module.exports = {
       reactQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),
-      agentActionsPlugin(),
     ),
   ],
 };
@@ -204,18 +200,6 @@ core package는 의도적으로 작게 유지합니다. 특별한 동작은 plug
 
 이 plugin은 query key와 data를 관찰합니다. Query data를 변경하거나, query를 invalidate하거나, refetch를 실행하지는 않습니다.
 
-### `@react-native-scalable-devtools/agent-actions-plugin`
-
-이 plugin은 외부 agent가 현재 UI target을 resolve하고, 매칭된 view를 press하거나 scroll container를 스크롤해야 할 때 사용합니다.
-
-필요한 이유:
-
-- live element tree 관찰은 `/element-inspector`와 함께 사용합니다.
-- `id`, `testID`, `accessibilityLabel`, text, component 이름, broad query로 view를 찾을 수 있습니다.
-- 앱 runtime에서 enabled `onPress` handler와 일반적인 scroll method를 호출할 수 있습니다.
-
-이 plugin은 JavaScript semantic action을 수행합니다. native tap과 swipe에 가까운 fidelity가 필요하면 element snapshot을 Maestro, adb, XCTest, Appium 같은 host-side tool과 함께 사용하세요.
-
 ### 직접 plugin 만들기
 
 `ScalableDebuggerPlugin`을 구현하면 debugger를 확장할 수 있습니다.
@@ -276,6 +260,5 @@ plugin capabilities:
 - `GET /apps`는 연결된 앱과 metadata를 반환합니다.
 - `GET /element-inspector`는 앱 runtime에서 새 tree snapshot을 요청합니다.
 - `POST /react-navigation/navigate`와 `/react-navigation/back`은 앱 runtime에 semantic React Navigation action 수행을 요청합니다.
-- `POST /agent-actions/press`와 `/agent-actions/scroll`은 앱 runtime에 semantic UI action 수행을 요청합니다.
 - `appId`는 외부 요청의 public selector로 유지됩니다.
 - `deviceInfo.deviceId`는 device id가 필요한 도구를 위해 계속 제공됩니다.

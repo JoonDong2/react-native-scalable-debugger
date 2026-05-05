@@ -28,16 +28,13 @@ module.exports = {
 };
 ```
 
-UI 관찰, semantic action, navigation 제어도 함께 필요하다면 다른 plugin과 같이 등록하세요.
+UI 관찰이나 navigation 제어도 함께 필요하다면 다른 plugin과 같이 등록하세요.
 
 ```js
 const { startCommand } = require('@react-native-scalable-devtools/cli');
 const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
-const {
-  agentActionsPlugin,
-} = require('@react-native-scalable-devtools/agent-actions-plugin');
 const {
   patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   reactQueryPlugin,
@@ -47,7 +44,6 @@ module.exports = {
   commands: [
     startCommand(
       elementInspectorPlugin(),
-      agentActionsPlugin(),
       reactQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),

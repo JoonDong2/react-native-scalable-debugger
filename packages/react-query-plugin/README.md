@@ -28,16 +28,13 @@ module.exports = {
 };
 ```
 
-Register it next to other plugins when you also need UI observation, semantic actions, or navigation control:
+Register it next to other plugins when you also need UI observation or navigation control:
 
 ```js
 const { startCommand } = require('@react-native-scalable-devtools/cli');
 const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
-const {
-  agentActionsPlugin,
-} = require('@react-native-scalable-devtools/agent-actions-plugin');
 const {
   patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   reactQueryPlugin,
@@ -47,7 +44,6 @@ module.exports = {
   commands: [
     startCommand(
       elementInspectorPlugin(),
-      agentActionsPlugin(),
       reactQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),

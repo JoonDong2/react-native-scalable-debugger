@@ -4,7 +4,7 @@
 
 This plugin exposes host-side endpoints that let an external agent read registered React Navigation state, navigate to a route, or go back in a running React Native app. It can also patch the React Native debugger frontend with a Navigation tab that shows the registered navigation state live.
 
-The plugin owns React Navigation ref registration. It does not inspect the UI tree or trigger view actions; use `@react-native-scalable-devtools/element-inspector-plugin` for observation and `@react-native-scalable-devtools/agent-actions-plugin` for press and scroll actions.
+The plugin owns React Navigation ref registration. It does not inspect the UI tree or trigger view actions; use `@react-native-scalable-devtools/element-inspector-plugin` for observation and host-side automation tools when you need native taps or scrolls.
 
 ## Usage
 
@@ -39,9 +39,6 @@ const {
   patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
-const {
-  agentActionsPlugin,
-} = require('@react-native-scalable-devtools/agent-actions-plugin');
 
 module.exports = {
   commands: [
@@ -53,7 +50,6 @@ module.exports = {
       reactNavigationPlugin({
         patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
       }),
-      agentActionsPlugin(),
     ),
   ],
 };
@@ -163,4 +159,4 @@ Example response:
 
 This plugin is for development and agent automation workflows. It performs semantic JavaScript navigation through a registered React Navigation ref. It does not simulate native taps, gestures, or OS-level back behavior.
 
-Use `@react-native-scalable-devtools/agent-actions-plugin` when an agent needs to press a matched React Native view or scroll a matched container.
+Use `@react-native-scalable-devtools/element-inspector-plugin` and host-side automation tools when an agent needs to inspect a React Native view and drive native taps or scrolls.

@@ -13,7 +13,7 @@ It provides:
 - a replacement `startCommand` for launching the debugger server
 - an AppProxy that tracks connected React Native apps
 - a public `appId` selector for routing requests to the right app
-- the plugin API used by the network, element inspector, React Navigation, and agent action plugins
+- the plugin API used by the network, element inspector, React Navigation, and React Query plugins
 - hooks for custom HTTP endpoints, WebSocket endpoints, and debugger protocol behavior
 
 If you are building a debugger workflow for one app or many apps, this package is the layer that keeps the connection model and plugin integration in one place.
@@ -54,9 +54,6 @@ const {
   patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   reactQueryPlugin,
 } = require('@react-native-scalable-devtools/react-query-plugin');
-const {
-  agentActionsPlugin,
-} = require('@react-native-scalable-devtools/agent-actions-plugin');
 
 module.exports = {
   commands: [
@@ -71,7 +68,6 @@ module.exports = {
       reactQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),
-      agentActionsPlugin(),
     ),
   ],
 };
@@ -204,18 +200,6 @@ It is useful because:
 
 This plugin observes query keys and data. It does not mutate query data, invalidate queries, or trigger refetches.
 
-### `@react-native-scalable-devtools/agent-actions-plugin`
-
-Use this plugin when an external agent needs to resolve current UI targets, press a matched view, or scroll a matched container.
-
-It is useful because:
-
-- it pairs with `/element-inspector` for live element-tree observation
-- it can resolve views by `id`, `testID`, `accessibilityLabel`, text, component name, or broad query
-- it can call enabled `onPress` handlers and common scroll methods from the app runtime
-
-This plugin performs JavaScript semantic actions. For native tap and swipe fidelity, combine element snapshots with host-side tools such as Maestro, adb, XCTest, or Appium.
-
 ### Creating your own plugin
 
 You can extend the debugger by implementing `ScalableDebuggerPlugin`.
@@ -276,6 +260,5 @@ The package still exposes the same core behavior as before:
 - `GET /apps` returns connected apps and their metadata
 - `GET /element-inspector` requests a fresh tree snapshot from the app runtime
 - `POST /react-navigation/navigate` and `/react-navigation/back` ask the app runtime to perform semantic React Navigation actions
-- `POST /agent-actions/press` and `/agent-actions/scroll` ask the app runtime to perform semantic UI actions
 - `appId` remains the public selector for external requests
 - `deviceInfo.deviceId` stays available for tools that need the underlying device id

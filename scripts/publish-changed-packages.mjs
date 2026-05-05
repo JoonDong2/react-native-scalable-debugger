@@ -34,10 +34,6 @@ const PACKAGES = [
     name: '@react-native-scalable-devtools/react-query-plugin',
     directory: 'packages/react-query-plugin',
   },
-  {
-    name: '@react-native-scalable-devtools/agent-actions-plugin',
-    directory: 'packages/agent-actions-plugin',
-  },
 ];
 
 const options = parseArgs(process.argv.slice(2));

@@ -4,7 +4,7 @@
 
 이 plugin은 외부 agent가 실행 중인 React Native 앱에서 등록된 React Navigation state를 읽고, route로 navigate 하거나 go back 할 수 있도록 host-side endpoint를 제공합니다. 또한 React Native debugger frontend를 patch해서 등록된 navigation state를 실시간으로 보여 주는 Navigation 탭을 추가할 수 있습니다.
 
-이 plugin은 React Navigation ref 등록을 담당합니다. UI tree를 관찰하거나 view action을 실행하지는 않습니다. 관찰에는 `@react-native-scalable-devtools/element-inspector-plugin`을, press와 scroll에는 `@react-native-scalable-devtools/agent-actions-plugin`을 사용하세요.
+이 plugin은 React Navigation ref 등록을 담당합니다. UI tree를 관찰하거나 view action을 실행하지는 않습니다. 관찰에는 `@react-native-scalable-devtools/element-inspector-plugin`을, native tap이나 scroll이 필요할 때는 host-side automation tool을 사용하세요.
 
 ## 사용법
 
@@ -39,9 +39,6 @@ const {
   patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
-const {
-  agentActionsPlugin,
-} = require('@react-native-scalable-devtools/agent-actions-plugin');
 
 module.exports = {
   commands: [
@@ -53,7 +50,6 @@ module.exports = {
       reactNavigationPlugin({
         patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
       }),
-      agentActionsPlugin(),
     ),
   ],
 };
@@ -163,4 +159,4 @@ curl -s "http://localhost:8081/react-navigation/state?appId=<appId>"
 
 이 plugin은 development와 agent automation workflow를 위한 기능입니다. 등록된 React Navigation ref를 통해 semantic JavaScript navigation을 수행합니다. Native tap, gesture, OS-level back 동작을 시뮬레이션하지는 않습니다.
 
-agent가 매칭된 React Native view를 press하거나 container를 scroll해야 한다면 `@react-native-scalable-devtools/agent-actions-plugin`을 사용하세요.
+agent가 매칭된 React Native view를 확인한 뒤 native tap이나 scroll을 수행해야 한다면 `@react-native-scalable-devtools/element-inspector-plugin`과 host-side automation tool을 함께 사용하세요.
