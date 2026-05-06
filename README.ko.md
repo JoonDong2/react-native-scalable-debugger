@@ -46,7 +46,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 const {
@@ -61,9 +60,7 @@ module.exports = {
         patchDebuggerFrontend: patchNetworkDebuggerFrontend,
       }),
       elementInspectorPlugin(),
-      reactNavigationPlugin({
-        patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
-      }),
+      reactNavigationPlugin(),
       tanstackQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),
@@ -78,7 +75,7 @@ module.exports = {
 - `@react-native-scalable-devtools/element-inspector-plugin`의 `GET /element-inspector`: 연결된 앱의 live element tree를 가져옵니다.
 - `@react-native-scalable-devtools/react-navigation-plugin`의 `GET /react-navigation/state`, `POST /react-navigation/navigate`, `POST /react-navigation/back`: 외부 agent가 등록된 React Navigation state를 읽고 화면을 이동할 수 있게 합니다.
 - `@react-native-scalable-devtools/tanstack-query-plugin`의 `GET /react-query/queries`: 외부 agent가 등록된 QueryClient cache data를 읽을 수 있게 합니다.
-- React Navigation plugin은 기존 app socket mapping 위의 커스텀 `ReactNavigation` CDP domain으로 동작하는 live `Navigation` 탭도 debugger frontend에 추가할 수 있습니다.
+- React Navigation plugin은 기존 app socket mapping 위의 커스텀 `ReactNavigation` CDP domain으로 동작하는 live `Navigation` 탭도 debugger frontend에 추가합니다.
 - Tanstack Query plugin은 기존 app socket mapping 위의 커스텀 `ReactQuery` CDP domain으로 동작하는 live `Queries` 탭도 debugger frontend에 추가할 수 있습니다.
 
 앱이 하나뿐이면 `appId`를 생략할 수 있는 경우가 많습니다. 앱이 둘 이상이면 요청이 원하는 runtime으로 가도록 `appId`를 전달해야 합니다.

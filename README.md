@@ -46,7 +46,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 const {
@@ -61,9 +60,7 @@ module.exports = {
         patchDebuggerFrontend: patchNetworkDebuggerFrontend,
       }),
       elementInspectorPlugin(),
-      reactNavigationPlugin({
-        patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
-      }),
+      reactNavigationPlugin(),
       tanstackQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),
@@ -78,7 +75,7 @@ Useful endpoints:
 - `GET /element-inspector` from `@react-native-scalable-devtools/element-inspector-plugin` to fetch the live element tree for a connected app
 - `GET /react-navigation/state`, `POST /react-navigation/navigate`, and `POST /react-navigation/back` from `@react-native-scalable-devtools/react-navigation-plugin` to let an external agent read registered React Navigation state and move through screens
 - `GET /react-query/queries` from `@react-native-scalable-devtools/tanstack-query-plugin` to let an external agent read registered QueryClient cache data
-- The React Navigation plugin can also patch the debugger frontend with a live `Navigation` tab backed by a custom `ReactNavigation` CDP domain over the existing app socket mapping
+- The React Navigation plugin also patches the debugger frontend with a live `Navigation` tab backed by a custom `ReactNavigation` CDP domain over the existing app socket mapping
 - The Tanstack Query plugin can patch the debugger frontend with a live `Queries` tab backed by a custom `ReactQuery` CDP domain over the existing app socket mapping
 
 If only one app is connected, `appId` can usually be omitted. If more than one app is connected, pass `appId` so the request reaches the intended runtime.

@@ -2,7 +2,7 @@
 
 [한국어](README.ko.md)
 
-This plugin exposes host-side endpoints that let an external agent read registered React Navigation state, navigate to a route, or go back in a running React Native app. It can also patch the React Native debugger frontend with a Navigation tab that shows the registered navigation state live.
+This plugin exposes host-side endpoints that let an external agent read registered React Navigation state, navigate to a route, or go back in a running React Native app. It also patches the React Native debugger frontend with a Navigation tab that shows the registered navigation state live.
 
 The plugin owns React Navigation ref registration. It does not inspect the UI tree or trigger view actions; use `@react-native-scalable-devtools/element-inspector-plugin` for observation and host-side automation tools when you need native taps or scrolls.
 
@@ -13,13 +13,12 @@ The plugin owns React Navigation ref registration. It does not inspect the UI tr
 ```js
 const { startCommand } = require('@react-native-scalable-devtools/cli');
 const {
-  patchDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 
 module.exports = {
   commands: [
-    startCommand(reactNavigationPlugin({ patchDebuggerFrontend })),
+    startCommand(reactNavigationPlugin()),
   ],
 };
 ```
@@ -36,7 +35,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 
@@ -47,9 +45,7 @@ module.exports = {
         patchDebuggerFrontend: patchNetworkDebuggerFrontend,
       }),
       elementInspectorPlugin(),
-      reactNavigationPlugin({
-        patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
-      }),
+      reactNavigationPlugin(),
     ),
   ],
 };
@@ -81,7 +77,7 @@ The plugin accepts any ref with the React Navigation-style methods it needs, so 
 
 ## Debugger frontend tab
 
-Passing `patchDebuggerFrontend` to `reactNavigationPlugin` adds a `Navigation` tab to the React Native debugger frontend. The tab registers a custom `ReactNavigation` CDP domain and sends `ReactNavigation.enable`, `ReactNavigation.getState`, and `ReactNavigation.disable` through the existing debugger socket. The devtools server routes those commands to the app that is already bound to that debugger session, using the same app socket mapping as the network plugin.
+Registering `reactNavigationPlugin()` adds a `Navigation` tab to the React Native debugger frontend. The tab registers a custom `ReactNavigation` CDP domain and sends `ReactNavigation.enable`, `ReactNavigation.getState`, and `ReactNavigation.disable` through the existing debugger socket. The devtools server routes those commands to the app that is already bound to that debugger session, using the same app socket mapping as the network plugin.
 
 When the tab is enabled, the app runtime listens to the registered navigation ref and emits `ReactNavigation.stateUpdated` whenever the navigation state changes. The panel renders the root history as a route list, expands nested navigator routes such as stacks, and opens a closable detail pane with `name`, `key`, and `params` when a route is selected. The event includes `updatedAt` and a state snapshot with `isReady`, sanitized root `state`, and `currentRoute`. A short polling fallback is used for navigation refs that do not expose a `state` listener.
 

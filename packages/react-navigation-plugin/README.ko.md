@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-이 plugin은 외부 agent가 실행 중인 React Native 앱에서 등록된 React Navigation state를 읽고, route로 navigate 하거나 go back 할 수 있도록 host-side endpoint를 제공합니다. 또한 React Native debugger frontend를 patch해서 등록된 navigation state를 실시간으로 보여 주는 Navigation 탭을 추가할 수 있습니다.
+이 plugin은 외부 agent가 실행 중인 React Native 앱에서 등록된 React Navigation state를 읽고, route로 navigate 하거나 go back 할 수 있도록 host-side endpoint를 제공합니다. 또한 React Native debugger frontend를 patch해서 등록된 navigation state를 실시간으로 보여 주는 Navigation 탭을 추가합니다.
 
 이 plugin은 React Navigation ref 등록을 담당합니다. UI tree를 관찰하거나 view action을 실행하지는 않습니다. 관찰에는 `@react-native-scalable-devtools/element-inspector-plugin`을, native tap이나 scroll이 필요할 때는 host-side automation tool을 사용하세요.
 
@@ -13,13 +13,12 @@
 ```js
 const { startCommand } = require('@react-native-scalable-devtools/cli');
 const {
-  patchDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 
 module.exports = {
   commands: [
-    startCommand(reactNavigationPlugin({ patchDebuggerFrontend })),
+    startCommand(reactNavigationPlugin()),
   ],
 };
 ```
@@ -36,7 +35,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 
@@ -47,9 +45,7 @@ module.exports = {
         patchDebuggerFrontend: patchNetworkDebuggerFrontend,
       }),
       elementInspectorPlugin(),
-      reactNavigationPlugin({
-        patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
-      }),
+      reactNavigationPlugin(),
     ),
   ],
 };
@@ -81,7 +77,7 @@ if (__DEV__) {
 
 ## Debugger frontend 탭
 
-`reactNavigationPlugin`에 `patchDebuggerFrontend`를 전달하면 React Native debugger frontend에 `Navigation` 탭이 추가됩니다. 이 탭은 커스텀 `ReactNavigation` CDP domain을 등록하고, `ReactNavigation.enable`, `ReactNavigation.getState`, `ReactNavigation.disable`을 기존 debugger socket으로 보냅니다. devtools server는 network plugin과 같은 app socket mapping을 사용해서 해당 debugger session에 이미 연결된 앱으로 command를 전달합니다.
+`reactNavigationPlugin()`을 등록하면 React Native debugger frontend에 `Navigation` 탭이 추가됩니다. 이 탭은 커스텀 `ReactNavigation` CDP domain을 등록하고, `ReactNavigation.enable`, `ReactNavigation.getState`, `ReactNavigation.disable`을 기존 debugger socket으로 보냅니다. devtools server는 network plugin과 같은 app socket mapping을 사용해서 해당 debugger session에 이미 연결된 앱으로 command를 전달합니다.
 
 탭이 활성화되면 app runtime은 등록된 navigation ref를 구독하고 navigation state가 바뀔 때마다 `ReactNavigation.stateUpdated`를 보냅니다. 패널은 root history를 route list로 렌더링하고 stack 같은 nested navigator의 routes를 펼쳐 보여 주며, route를 선택하면 `name`, `key`, `params`를 담은 닫을 수 있는 상세 패널을 엽니다. Event에는 `updatedAt`, 그리고 `isReady`, sanitize된 root `state`, `currentRoute`를 담은 state snapshot이 포함됩니다. `state` listener를 노출하지 않는 navigation ref를 위해 짧은 polling fallback도 사용합니다.
 

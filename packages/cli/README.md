@@ -47,7 +47,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 const {
@@ -62,9 +61,7 @@ module.exports = {
         patchDebuggerFrontend: patchNetworkDebuggerFrontend,
       }),
       elementInspectorPlugin(),
-      reactNavigationPlugin({
-        patchDebuggerFrontend: patchReactNavigationDebuggerFrontend,
-      }),
+      reactNavigationPlugin(),
       tanstackQueryPlugin({
         patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
       }),
