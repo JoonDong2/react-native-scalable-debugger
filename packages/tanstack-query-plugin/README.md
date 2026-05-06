@@ -13,17 +13,12 @@ The plugin does not create or discover a `QueryClient` automatically. Register t
 ```js
 const { startCommand } = require('@react-native-scalable-devtools/cli');
 const {
-  patchDebuggerFrontend,
   tanstackQueryPlugin,
 } = require('@react-native-scalable-devtools/tanstack-query-plugin');
 
 module.exports = {
   commands: [
-    startCommand(
-      tanstackQueryPlugin({
-        patchDebuggerFrontend,
-      }),
-    ),
+    startCommand(tanstackQueryPlugin()),
   ],
 };
 ```
@@ -36,7 +31,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   tanstackQueryPlugin,
 } = require('@react-native-scalable-devtools/tanstack-query-plugin');
 
@@ -44,9 +38,7 @@ module.exports = {
   commands: [
     startCommand(
       elementInspectorPlugin(),
-      tanstackQueryPlugin({
-        patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
-      }),
+      tanstackQueryPlugin(),
     ),
   ],
 };
@@ -79,7 +71,7 @@ The plugin accepts any client with Tanstack Query-style `getQueryCache().getAll(
 
 ## Debugger Frontend
 
-Passing `patchDebuggerFrontend` to `tanstackQueryPlugin` adds a `Queries` tab to the React Native debugger frontend. The tab registers a custom `ReactQuery` CDP domain and sends `ReactQuery.enable`, `ReactQuery.getQueries`, and `ReactQuery.disable` through the existing debugger socket. The devtools server routes those commands to the app already bound to that debugger session, using the same app socket mapping as the React Navigation plugin.
+Registering `tanstackQueryPlugin()` adds a `Queries` tab to the React Native debugger frontend. The tab registers a custom `ReactQuery` CDP domain and sends `ReactQuery.enable`, `ReactQuery.getQueries`, and `ReactQuery.disable` through the existing debugger socket. The devtools server routes those commands to the app already bound to that debugger session, using the same app socket mapping as the React Navigation plugin.
 
 When the tab is enabled, the app runtime subscribes to the registered QueryClient's query cache and emits `ReactQuery.queriesUpdated` whenever query cache state changes. A short polling fallback also keeps the panel fresh if a cache implementation does not emit every update. The panel renders query keys as a list. Selecting an item opens a right-side detail pane with `queryKey`, `data`, `state`, and `error`; close the pane with the `Close` button.
 

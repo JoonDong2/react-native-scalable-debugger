@@ -13,17 +13,12 @@
 ```js
 const { startCommand } = require('@react-native-scalable-devtools/cli');
 const {
-  patchDebuggerFrontend,
   tanstackQueryPlugin,
 } = require('@react-native-scalable-devtools/tanstack-query-plugin');
 
 module.exports = {
   commands: [
-    startCommand(
-      tanstackQueryPlugin({
-        patchDebuggerFrontend,
-      }),
-    ),
+    startCommand(tanstackQueryPlugin()),
   ],
 };
 ```
@@ -36,7 +31,6 @@ const {
   elementInspectorPlugin,
 } = require('@react-native-scalable-devtools/element-inspector-plugin');
 const {
-  patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   tanstackQueryPlugin,
 } = require('@react-native-scalable-devtools/tanstack-query-plugin');
 
@@ -44,9 +38,7 @@ module.exports = {
   commands: [
     startCommand(
       elementInspectorPlugin(),
-      tanstackQueryPlugin({
-        patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
-      }),
+      tanstackQueryPlugin(),
     ),
   ],
 };
@@ -79,7 +71,7 @@ export function App() {
 
 ## Debugger Frontend
 
-`tanstackQueryPlugin`에 `patchDebuggerFrontend`를 전달하면 React Native debugger frontend에 `Queries` 탭이 추가됩니다. 이 탭은 커스텀 `ReactQuery` CDP domain을 등록하고, `ReactQuery.enable`, `ReactQuery.getQueries`, `ReactQuery.disable`을 기존 debugger socket으로 보냅니다. devtools server는 React Navigation plugin과 같은 app socket mapping을 사용해서 해당 debugger session에 이미 연결된 앱으로 command를 전달합니다.
+`tanstackQueryPlugin()`을 등록하면 React Native debugger frontend에 `Queries` 탭이 추가됩니다. 이 탭은 커스텀 `ReactQuery` CDP domain을 등록하고, `ReactQuery.enable`, `ReactQuery.getQueries`, `ReactQuery.disable`을 기존 debugger socket으로 보냅니다. devtools server는 React Navigation plugin과 같은 app socket mapping을 사용해서 해당 debugger session에 이미 연결된 앱으로 command를 전달합니다.
 
 탭이 활성화되면 app runtime은 등록된 QueryClient의 query cache를 구독하고 query cache state가 바뀔 때마다 `ReactQuery.queriesUpdated`를 보냅니다. Cache 구현이 모든 update를 event로 내보내지 않는 경우를 위해 짧은 polling fallback도 사용합니다. 패널은 query key를 list 형태로 렌더링합니다. 아이템을 선택하면 오른쪽 detail pane에 `queryKey`, `data`, `state`, `error`가 표시되고, `Close` button으로 닫을 수 있습니다.
 

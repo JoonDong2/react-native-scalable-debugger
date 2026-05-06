@@ -50,7 +50,6 @@ const {
   reactNavigationPlugin,
 } = require('@react-native-scalable-devtools/react-navigation-plugin');
 const {
-  patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
   tanstackQueryPlugin,
 } = require('@react-native-scalable-devtools/tanstack-query-plugin');
 
@@ -62,9 +61,7 @@ module.exports = {
       }),
       elementInspectorPlugin(),
       reactNavigationPlugin(),
-      tanstackQueryPlugin({
-        patchDebuggerFrontend: patchReactQueryDebuggerFrontend,
-      }),
+      tanstackQueryPlugin(),
     ),
   ],
 };
@@ -191,7 +188,7 @@ It is useful because:
 - apps register their own `QueryClient` directly from runtime code
 - it observes query cache changes in real time
 - it exposes host-side `/react-query/queries` snapshots
-- it can patch the React Native debugger frontend with a live `Queries` tab using the existing app socket mapping
+- it patches the React Native debugger frontend with a live `Queries` tab using the existing app socket mapping
 - selecting a query key opens a closable detail pane with the query data and state
 
 This plugin observes query keys and data. It does not mutate query data, invalidate queries, or trigger refetches.
