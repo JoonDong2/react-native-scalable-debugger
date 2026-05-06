@@ -10,6 +10,9 @@ import { preparePatchedFrontend } from './server/patchDebuggerFrontend';
 
 const controller = new ReactQueryController();
 
+export const patchDebuggerFrontend: DebuggerFrontendPatch = ({ sourceDist }) =>
+  preparePatchedFrontend(sourceDist);
+
 const tanstackQueryPluginDefinition: ScalableDebuggerPlugin = {
   name: 'react-query',
   domains: [createReactQueryDomain],
@@ -19,15 +22,12 @@ const tanstackQueryPluginDefinition: ScalableDebuggerPlugin = {
     },
   ],
   middlewareEndpoints: createReactQueryMiddlewareEndpoints(controller),
+  debuggerFrontendPatch: patchDebuggerFrontend,
 };
-
-export const patchDebuggerFrontend: DebuggerFrontendPatch = ({ sourceDist }) =>
-  preparePatchedFrontend(sourceDist);
 
 export function tanstackQueryPlugin(): RunServerOptions {
   return {
     plugins: [tanstackQueryPluginDefinition],
-    debuggerFrontendPatch: patchDebuggerFrontend,
   };
 }
 

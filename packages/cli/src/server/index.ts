@@ -123,15 +123,20 @@ function mergeStartCommandOptions(
   for (const options of optionFragments) {
     if (options.plugins) {
       plugins.push(...options.plugins);
+      for (const plugin of options.plugins) {
+        addDebuggerFrontendPatch(
+          debuggerFrontendPatches,
+          plugin.debuggerFrontendPatch
+        );
+      }
     }
     if (options.debuggerFrontend !== undefined) {
       merged.debuggerFrontend = options.debuggerFrontend;
     }
-    if (typeof options.debuggerFrontendPatch === 'function') {
-      debuggerFrontendPatches.push(options.debuggerFrontendPatch);
-    } else if (Array.isArray(options.debuggerFrontendPatch)) {
-      debuggerFrontendPatches.push(...options.debuggerFrontendPatch);
-    }
+    addDebuggerFrontendPatch(
+      debuggerFrontendPatches,
+      options.debuggerFrontendPatch
+    );
   }
 
   if (plugins.length > 0) {
@@ -142,4 +147,15 @@ function mergeStartCommandOptions(
   }
 
   return merged;
+}
+
+function addDebuggerFrontendPatch(
+  patches: DebuggerFrontendPatch[],
+  patch: RunServerOptions['debuggerFrontendPatch'] | undefined
+): void {
+  if (typeof patch === 'function') {
+    patches.push(patch);
+  } else if (Array.isArray(patch)) {
+    patches.push(...patch);
+  }
 }

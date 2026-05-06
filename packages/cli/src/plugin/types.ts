@@ -1,5 +1,6 @@
 import type { WebSocketServer } from 'ws';
 import type { IncomingMessage, ServerResponse } from 'http';
+import type { DebuggerFrontendPatch } from '../server/runServer';
 import type { CDPMessage } from '../types/cdp';
 import type {
   AppConnection,
@@ -92,6 +93,9 @@ export interface ScalableDebuggerPlugin {
   clientEntries?: readonly (string | ClientEntryContribution)[];
   middlewareEndpoints?: readonly MiddlewareEndpointContribution[];
   websocketEndpoints?: readonly WebSocketEndpointContribution[];
+  debuggerFrontendPatch?:
+    | DebuggerFrontendPatch
+    | readonly DebuggerFrontendPatch[];
   handleDeviceMessage?: (
     payload: JSONSerializable,
     context: InspectorDomainContext

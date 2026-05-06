@@ -10,6 +10,9 @@ import { preparePatchedFrontend } from './server/patchDebuggerFrontend';
 
 const controller = new ReactNavigationController();
 
+export const patchDebuggerFrontend: DebuggerFrontendPatch = ({ sourceDist }) =>
+  preparePatchedFrontend(sourceDist);
+
 const reactNavigationPluginDefinition: ScalableDebuggerPlugin = {
   name: 'react-navigation',
   domains: [createReactNavigationDomain],
@@ -19,15 +22,12 @@ const reactNavigationPluginDefinition: ScalableDebuggerPlugin = {
     },
   ],
   middlewareEndpoints: createReactNavigationMiddlewareEndpoints(controller),
+  debuggerFrontendPatch: patchDebuggerFrontend,
 };
-
-export const patchDebuggerFrontend: DebuggerFrontendPatch = ({ sourceDist }) =>
-  preparePatchedFrontend(sourceDist);
 
 export function reactNavigationPlugin(): RunServerOptions {
   return {
     plugins: [reactNavigationPluginDefinition],
-    debuggerFrontendPatch: patchDebuggerFrontend,
   };
 }
 
