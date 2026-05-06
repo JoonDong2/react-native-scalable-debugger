@@ -76,6 +76,7 @@ Useful endpoints:
 
 - `GET /apps` from `@react-native-scalable-devtools/cli` to discover connected apps, their `appId` values, and the device identifier the host OS recognizes for each app
 - `GET /element-inspector` from `@react-native-scalable-devtools/element-inspector-plugin` to fetch the live element tree for a connected app
+- `GET /react-navigation/state`, `POST /react-navigation/navigate`, and `POST /react-navigation/back` from `@react-native-scalable-devtools/react-navigation-plugin` to let an external agent read registered React Navigation state and move through screens
 - `GET /react-query/queries` from `@react-native-scalable-devtools/tanstack-query-plugin` to let an external agent read registered QueryClient cache data
 - The React Navigation plugin can also patch the debugger frontend with a live `Navigation` tab backed by a custom `ReactNavigation` CDP domain over the existing app socket mapping
 - The Tanstack Query plugin can patch the debugger frontend with a live `Queries` tab backed by a custom `ReactQuery` CDP domain over the existing app socket mapping
@@ -89,7 +90,7 @@ The `deviceInfo.deviceId` field from `GET /apps` is useful when you want to targ
 - `@react-native-scalable-devtools/cli`: the core debugger server. It provides `startCommand`, the AppProxy that tracks connected apps, and the plugin API for custom endpoints and debugger hooks. See [package README](packages/cli/README.md).
 - `@react-native-scalable-devtools/network-plugin`: the network inspection plugin. Use it when you need better visibility into HTTP requests and WebSocket traffic than the stock React Native network panel provides. It also patches the debugger frontend so socket traffic can be shown separately from Fetch/XHR traffic. See [package README](packages/network-plugin/README.md).
 - `@react-native-scalable-devtools/element-inspector-plugin`: the live element-tree inspection plugin. Use it when you want to inspect the current React Native UI hierarchy from the development host, compact the tree, render it as plain text for an agent or script, or capture a snapshot after driving the app into a specific state with a host-side tool such as Maestro CLI. See [package README](packages/element-inspector-plugin/README.md).
-- `@react-native-scalable-devtools/react-navigation-plugin`: the React Navigation plugin. Use it when an external LLM agent needs to register a `navigationRef` and inspect navigation state live in the debugger frontend. See [package README](packages/react-navigation-plugin/README.md).
+- `@react-native-scalable-devtools/react-navigation-plugin`: the React Navigation plugin. Use it when an external LLM agent needs to read registered React Navigation state, navigate through React Navigation with a registered `navigationRef`, go back, or inspect navigation state live in the debugger frontend. See [package README](packages/react-navigation-plugin/README.md).
 - `@react-native-scalable-devtools/tanstack-query-plugin`: the Tanstack Query plugin. Use it when you need to register a QueryClient, observe query keys and data changes in real time, or inspect query data in the debugger frontend. See [package README](packages/tanstack-query-plugin/README.md).
 
 ## Package Docs
